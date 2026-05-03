@@ -1,304 +1,78 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AetherTrade AI - TradingView Style Chart</title>
-    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #131722; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial; padding: 8px; }
-        .header { background: #1e222d; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
-        .header h3 { color: #fff; font-size: 14px; margin: 0; }
-        .signal-box { 
-            background: linear-gradient(135deg, #1a3a2a, #0d2818); 
-            border: 1px solid #00ff8855; border-radius: 8px; 
-            padding: 10px; margin: 8px 0; 
-        }
-        .signal-box h4 { color: #00ff88; font-size: 14px; margin: 0 0 5px 0; }
-        .signal-row { display: flex; justify-content: space-between; color: #ccc; font-size: 11px; margin: 2px 0; }
-        .signal-row .val { color: #fff; font-weight: bold; }
-        .leverage { background: #ff4444; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-        #chart { width: 100%; height: 380px; }
-        #macd_chart { width: 100%; height: 100px; margin-top: 2px; }
-        #rsi_chart { width: 100%; height: 80px; margin-top: 2px; }
-        .legend { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 5px 0; }
-        .legend span { font-size: 10px; padding: 2px 6px; border-radius: 3px; }
-        .footer { color: #666; text-align: center; font-size: 10px; margin-top: 5px; }
-    </style>
+<title>AetherTrade AI</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#131722;font-family:Arial;padding:5px}
+h3{color:#fff;text-align:center;margin:5px 0;font-size:14px}
+#chart{width:100%;height:350px}
+#rsi{width:100%;height:80px;margin-top:2px}
+.leg{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:3px 0}
+.leg span{font-size:10px;padding:2px 6px;border-radius:3px}
+</style>
 </head>
 <body>
-    <div class="header">
-        <h3 id="title">📊 AetherTrade AI</h3>
-    </div>
-    
-    <div class="signal-box" id="signalBox">
-        <h4>🤖 AI SIGNAL</h4>
-        <div class="signal-row"><span>Arah:</span> <span class="val" id="sigDir">--</span></div>
-        <div class="signal-row"><span>Leverage:</span> <span class="leverage" id="sigLev">--</span></div>
-        <div class="signal-row"><span>Confidence:</span> <span class="val" id="sigConf">--</span></div>
-        <div class="signal-row"><span>Entry:</span> <span class="val" style="color:#00ff88" id="sigEntry">--</span></div>
-        <div class="signal-row"><span>TP1:</span> <span class="val" style="color:#00bcd4" id="sigTP1">--</span></div>
-        <div class="signal-row"><span>TP2:</span> <span class="val" style="color:#2196f3" id="sigTP2">--</span></div>
-        <div class="signal-row"><span>TP3:</span> <span class="val" style="color:#9c27b0" id="sigTP3">--</span></div>
-        <div class="signal-row"><span>SL:</span> <span class="val" style="color:#ff4444" id="sigSL">--</span></div>
-    </div>
+<h3 id="title">Loading...</h3>
+<div class="leg">
+<span style="background:#ff980044;color:#ff9800">EMA9</span>
+<span style="background:#2196f344;color:#2196f3">EMA20</span>
+<span style="background:#e91e6344;color:#e91e63">EMA50</span>
+<span style="background:#fff3;color:#fff">BB</span>
+</div>
+<div id="chart"></div>
+<div id="rsi"></div>
+<div style="color:#666;text-align:center;font-size:10px;margin-top:5px">AetherTrade AI | EMA 9·20·50 | BB 20,2 | RSI 14</div>
+<script>
+const p=new URLSearchParams(location.search);
+const sym=p.get('symbol')||'XAUUSD';
+const entry=+p.get('entry')||0;
+const sl=+p.get('sl')||0;
+const tp1=+p.get('tp1')||0;
+const tp2=+p.get('tp2')||0;
+document.getElementById('title').innerText='📊 '+sym+' - AetherTrade AI';
+document.title=sym+' - AI Signal';
 
-    <div class="legend">
-        <span style="background:#ff980044;color:#ff9800">EMA 9</span>
-        <span style="background:#2196f344;color:#2196f3">EMA 20</span>
-        <span style="background:#e91e6344;color:#e91e63">EMA 50</span>
-        <span style="background:#ffffff22;color:#fff">BB</span>
-    </div>
+const ch=LightweightCharts.createChart(document.getElementById('chart'),{
+width:window.innerWidth-10,height:350,
+layout:{background:{color:'#131722'},textColor:'#d1d4dc'},
+grid:{vertLines:{color:'#1e222d'},horzLines:{color:'#1e222d'}},
+rightPriceScale:{borderColor:'#2a2e3e'},
+timeScale:{borderColor:'#2a2e3e',timeVisible:true}
+});
 
-    <div id="chart"></div>
-    <div id="macd_chart"></div>
-    <div id="rsi_chart"></div>
-    <div class="footer">AetherTrade AI | EMA 9·20·50 | BB 20,2 | MACD | RSI 14</div>
+const rsiCh=LightweightCharts.createChart(document.getElementById('rsi'),{
+width:window.innerWidth-10,height:80,
+layout:{background:{color:'#131722'},textColor:'#d1d4dc'},
+grid:{vertLines:{color:'#1e222d'},horzLines:{color:'#1e222d'}},
+rightPriceScale:{borderColor:'#2a2e3e'},
+timeScale:{borderColor:'#2a2e3e',timeVisible:false}
+});
 
-    <script>
-        // ===== PARAMETER URL =====
-        const params = new URLSearchParams(window.location.search);
-        const symbol = params.get('symbol') || 'XAUUSD';
-        const entry = parseFloat(params.get('entry')) || 0;
-        const sl = parseFloat(params.get('sl')) || 0;
-        const tp1 = parseFloat(params.get('tp1')) || 0;
-        const tp2 = parseFloat(params.get('tp2')) || 0;
-        const tp3 = parseFloat(params.get('tp3')) || 0;
-        const direction = params.get('dir') || (entry > sl ? 'BUY 🟢' : 'SELL 🔴');
-        const confidence = params.get('conf') || '75';
-        const leverage = params.get('lev') || '50x';
+const cs=ch.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borderUpColor:'#26a69a',borderDownColor:'#ef5350',wickUpColor:'#26a69a',wickDownColor:'#ef5350'});
+const rsiS=rsiCh.addLineSeries({color:'#ffeb3b',lineWidth:2});
 
-        // ===== UPDATE SIGNAL BOX =====
-        document.getElementById('sigDir').innerText = direction;
-        document.getElementById('sigLev').innerText = leverage;
-        document.getElementById('sigConf').innerText = confidence + '%';
-        document.getElementById('sigEntry').innerText = entry > 0 ? '$' + entry.toFixed(2) : '--';
-        document.getElementById('sigTP1').innerText = tp1 > 0 ? '$' + tp1.toFixed(2) : '--';
-        document.getElementById('sigTP2').innerText = tp2 > 0 ? '$' + tp2.toFixed(2) : '--';
-        document.getElementById('sigTP3').innerText = tp3 > 0 ? '$' + tp3.toFixed(2) : '--';
-        document.getElementById('sigSL').innerText = sl > 0 ? '$' + sl.toFixed(2) : '--';
+function ema(d,p){var k=2/(p+1),e=[],s=0;for(var i=0;i<p;i++)s+=d[i].close;e.push({time:d[p-1].time,value:s/p});for(var i=p;i<d.length;i++)e.push({time:d[i].time,value:d[i].close*k+e[e.length-1].value*(1-k)});return e}
+function sma(d,p){var r=[];for(var i=p-1;i<d.length;i++){var s=0;for(var j=i-p+1;j<=i;j++)s+=d[j].close;r.push({time:d[i].time,value:s/p})}return r}
+function bb(d,p,std){var m=sma(d,p),u=[],l=[];for(var i=0;i<m.length;i++){var idx=i+p-1,s=0;for(var j=idx-p+1;j<=idx;j++)s+=Math.pow(d[j].close-m[i].value,2);var st=Math.sqrt(s/p);u.push({time:m[i].time,value:m[i].value+std*st});l.push({time:m[i].time,value:m[i].value-std*st})}return{upper:u,lower:l,middle:m}}
+function rsi(d,p){var r=[],g=0,l=0;for(var i=1;i<=p;i++){var df=d[i].close-d[i-1].close;if(df>=0)g+=df;else l-=df}var ag=g/p,al=l/p;r.push({time:d[p].time,value:al==0?100:100-(100/(1+ag/al))});for(var i=p+1;i<d.length;i++){var df=d[i].close-d[i-1].close;ag=(ag*(p-1)+(df>0?df:0))/p;al=(al*(p-1)+(df<0?-df:0))/p;r.push({time:d[i].time,value:al==0?100:100-(100/(1+ag/al))})}return r}
 
-        document.getElementById('title').innerText = `📊 ${symbol} - AetherTrade AI`;
-        document.title = `${symbol} - AI Signal`;
-
-        // ===== CHART UTAMA =====
-        const chart = LightweightCharts.createChart(document.getElementById('chart'), {
-            width: window.innerWidth - 16,
-            height: 380,
-            layout: { 
-                background: { color: '#131722' }, 
-                textColor: '#d1d4dc' 
-            },
-            grid: { 
-                vertLines: { color: '#1e222d' }, 
-                horzLines: { color: '#1e222d' } 
-            },
-            crosshair: { mode: 0 },
-            rightPriceScale: { 
-                borderColor: '#2a2e3e',
-                scaleMargins: { top: 0.1, bottom: 0.1 }
-            },
-            timeScale: { 
-                borderColor: '#2a2e3e', 
-                timeVisible: true,
-                secondsVisible: false 
-            },
-        });
-
-        // ===== MACD CHART =====
-        const macdChart = LightweightCharts.createChart(document.getElementById('macd_chart'), {
-            width: window.innerWidth - 16,
-            height: 100,
-            layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
-            grid: { vertLines: { color: '#1e222d' }, horzLines: { color: '#1e222d' } },
-            rightPriceScale: { borderColor: '#2a2e3e' },
-            timeScale: { borderColor: '#2a2e3e', timeVisible: false },
-        });
-
-        // ===== RSI CHART =====
-        const rsiChart = LightweightCharts.createChart(document.getElementById('rsi_chart'), {
-            width: window.innerWidth - 16,
-            height: 80,
-            layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
-            grid: { vertLines: { color: '#1e222d' }, horzLines: { color: '#1e222d' } },
-            rightPriceScale: { borderColor: '#2a2e3e' },
-            timeScale: { borderColor: '#2a2e3e', timeVisible: false },
-        });
-
-        // ===== SERIES =====
-        const candleSeries = chart.addCandlestickSeries({
-            upColor: '#26a69a', downColor: '#ef5350',
-            borderUpColor: '#26a69a', borderDownColor: '#ef5350',
-            wickUpColor: '#26a69a', wickDownColor: '#ef5350',
-        });
-
-        const macdLine = macdChart.addLineSeries({ color: '#2196f3', lineWidth: 1 });
-        const signalLine = macdChart.addLineSeries({ color: '#ff9800', lineWidth: 1 });
-        const histogramSeries = macdChart.addHistogramSeries({ color: '#ef5350' });
-
-        const rsiSeries = rsiChart.addLineSeries({ 
-            color: '#ffeb3b', lineWidth: 2,
-            priceFormat: { type: 'custom', formatter: v => v.toFixed(1) }
-        });
-
-        // ===== FUNGSI KALKULASI =====
-        function calculateEMA(data, period) {
-            const k = 2 / (period + 1);
-            let ema = [];
-            let sum = 0;
-            for (let i = 0; i < period; i++) sum += data[i].close;
-            ema.push({ time: data[period-1].time, value: sum / period });
-            for (let i = period; i < data.length; i++) {
-                ema.push({ time: data[i].time, value: data[i].close * k + ema[ema.length-1].value * (1 - k) });
-            }
-            return ema;
-        }
-
-        function calculateSMA(data, period) {
-            let sma = [];
-            for (let i = period - 1; i < data.length; i++) {
-                let sum = 0;
-                for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
-                sma.push({ time: data[i].time, value: sum / period });
-            }
-            return sma;
-        }
-
-        function calculateBollinger(data, period = 20, stdDev = 2) {
-            const sma = calculateSMA(data, period);
-            let upper = [], lower = [];
-            for (let i = 0; i < sma.length; i++) {
-                const idx = i + period - 1;
-                let sum = 0;
-                for (let j = idx - period + 1; j <= idx; j++) {
-                    sum += Math.pow(data[j].close - sma[i].value, 2);
-                }
-                const std = Math.sqrt(sum / period);
-                upper.push({ time: sma[i].time, value: sma[i].value + stdDev * std });
-                lower.push({ time: sma[i].time, value: sma[i].value - stdDev * std });
-            }
-            return { upper, lower, middle: sma };
-        }
-
-        function calculateRSI(data, period = 14) {
-            let rsi = [], gains = 0, losses = 0;
-            for (let i = 1; i <= period; i++) {
-                const diff = data[i].close - data[i-1].close;
-                if (diff >= 0) gains += diff; else losses -= diff;
-            }
-            let avgGain = gains / period, avgLoss = losses / period;
-            rsi.push({ time: data[period].time, value: avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss)) });
-            for (let i = period + 1; i < data.length; i++) {
-                const diff = data[i].close - data[i-1].close;
-                avgGain = (avgGain * (period-1) + (diff > 0 ? diff : 0)) / period;
-                avgLoss = (avgLoss * (period-1) + (diff < 0 ? -diff : 0)) / period;
-                rsi.push({ time: data[i].time, value: avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss)) });
-            }
-            return rsi;
-        }
-
-        function calculateMACD(data, fast = 12, slow = 26, signal = 9) {
-            const emaFast = calculateEMA(data, fast);
-            const emaSlow = calculateEMA(data, slow);
-            let macd = [];
-            const startIdx = slow - 1;
-            for (let i = 0; i < emaSlow.length; i++) {
-                const fastVal = emaFast.find(e => e.time === emaSlow[i].time);
-                if (fastVal) {
-                    macd.push({ time: emaSlow[i].time, value: fastVal.value - emaSlow[i].value });
-                }
-            }
-            if (macd.length < signal) return { macd: [], signal: [], histogram: [] };
-            const sigLine = calculateEMA(macd.map(m => ({ close: m.value, time: m.time })), signal);
-            let histogram = [];
-            for (let i = 0; i < sigLine.length; i++) {
-                const macdVal = macd.find(m => m.time === sigLine[i].time);
-                if (macdVal) {
-                    histogram.push({ time: sigLine[i].time, value: macdVal.value - sigLine[i].value });
-                }
-            }
-            return { macd, signal: sigLine, histogram };
-        }
-
-        // ===== AMBIL DATA =====
-        const apiKey = 'd918e5241a1d46e09417302d53ffa7b5';
-        
-        fetch(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1h&outputsize=150&apikey=${apiKey}`)
-            .then(res => res.json())
-            .then(data => {
-                if (!data.values || data.values.length < 60) throw new Error('Data tidak cukup');
-                
-                const values = data.values.reverse();
-                const candleData = values.map(v => ({
-                    time: new Date(v.datetime).getTime() / 1000,
-                    open: parseFloat(v.open),
-                    high: parseFloat(v.high),
-                    low: parseFloat(v.low),
-                    close: parseFloat(v.close)
-                }));
-
-                // Candlestick
-                candleSeries.setData(candleData);
-
-                // EMA 9, 20, 50
-                const emaColors = ['#ff9800', '#2196f3', '#e91e63'];
-                [9, 20, 50].forEach((period, i) => {
-                    const ema = calculateEMA(candleData, period);
-                    const emaSeries = chart.addLineSeries({
-                        color: emaColors[i], lineWidth: 1.5,
-                        priceLineVisible: false,
-                        lastValueVisible: true,
-                        priceFormat: { type: 'custom', formatter: v => v.toFixed(2) }
-                    });
-                    emaSeries.setData(ema);
-                });
-
-                // Bollinger Bands
-                const bb = calculateBollinger(candleData, 20, 2);
-                const bbUpper = chart.addLineSeries({ color: '#ffffff44', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-                const bbMiddle = chart.addLineSeries({ color: '#ffffff88', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-                const bbLower = chart.addLineSeries({ color: '#ffffff44', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-                bbUpper.setData(bb.upper);
-                bbMiddle.setData(bb.middle);
-                bbLower.setData(bb.lower);
-
-                // RSI
-                const rsi = calculateRSI(candleData, 14);
-                rsiSeries.setData(rsi);
-                [70, 30, 50].forEach(level => {
-                    rsiChart.addLineSeries({
-                        color: level === 50 ? '#ffffff22' : '#ffffff11', lineWidth: 1,
-                        lastValueVisible: false, priceLineVisible: false
-                    }).setData([
-                        { time: candleData[0].time, value: level },
-                        { time: candleData[candleData.length-1].time, value: level }
-                    ]);
-                });
-
-                // MACD
-                const macdData = calculateMACD(candleData);
-                if (macdData.macd.length > 0) {
-                    macdLine.setData(macdData.macd);
-                    signalLine.setData(macdData.signal);
-                    histogramSeries.setData(macdData.histogram);
-                }
-
-                // Entry, SL, TP lines
-                [{p: entry, c: '#00ff88', t: 'E'}, {p: tp1, c: '#00bcd4', t: 'TP1'},
-                 {p: tp2, c: '#2196f3', t: 'TP2'}, {p: tp3, c: '#9c27b0', t: 'TP3'},
-                 {p: sl, c: '#ff4444', t: 'SL'}].forEach(({p, c, t}) => {
-                    if (p > 0) candleSeries.createPriceLine({ price: p, color: c, lineWidth: 2, axisLabelVisible: true, title: t });
-                });
-
-                chart.timeScale().fitContent();
-                macdChart.timeScale().fitContent();
-                rsiChart.timeScale().fitContent();
-                document.getElementById('title').innerText = `📊 ${symbol} - AetherTrade AI`;
-            })
-            .catch(err => {
-                document.getElementById('title').innerText = `⚠️ Gagal memuat data untuk ${symbol}`;
-                console.error(err);
-            });
-    </script>
+fetch('https://api.twelvedata.com/time_series?symbol='+sym+'&interval=15min&outputsize=120&apikey=d918e5241a1d46e09417302d53ffa7b5')
+.then(r=>r.json()).then(d=>{
+if(!d.values)throw new Error('No data');
+var v=d.values.reverse();
+var cd=v.map(x=>({time:new Date(x.datetime).getTime()/1000,open:+x.open,high:+x.high,low:+x.low,close:+x.close}));
+cs.setData(cd);
+[9,20,50].forEach((p,i)=>{var e=ema(cd,p);ch.addLineSeries({color:['#ff9800','#2196f3','#e91e63'][i],lineWidth:1,priceLineVisible:false}).setData(e)});
+var b=bb(cd,20,2);ch.addLineSeries({color:'#fff3',lineWidth:1,priceLineVisible:false}).setData(b.upper);ch.addLineSeries({color:'#fff8',lineWidth:1,priceLineVisible:false}).setData(b.middle);ch.addLineSeries({color:'#fff3',lineWidth:1,priceLineVisible:false}).setData(b.lower);
+var rs=rsi(cd,14);rsiS.setData(rs);
+[70,30,50].forEach(l=>{rsiCh.addLineSeries({color:'#fff2',lineWidth:1,lastValueVisible:false,priceLineVisible:false}).setData([{time:cd[0].time,value:l},{time:cd[cd.length-1].time,value:l}])});
+[{p:entry,c:'#00ff88',t:'E'},{p:tp1,c:'#00bcd4',t:'T1'},{p:tp2,c:'#2196f3',t:'T2'},{p:sl,c:'#ff4444',t:'SL'}].forEach(x=>{if(x.p>0)cs.createPriceLine({price:x.p,color:x.c,lineWidth:2,axisLabelVisible:true,title:x.t})});
+ch.timeScale().fitContent();rsiCh.timeScale().fitContent();
+document.getElementById('title').innerText='📊 '+sym+' - AetherTrade AI';
+}).catch(e=>{document.getElementById('title').innerText='⚠️ Gagal: '+sym});
+</script>
 </body>
 </html>
