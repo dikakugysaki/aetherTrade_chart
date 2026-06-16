@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AetherTrade AI — Professional Trading Terminal v2.8</title>
+    <meta name="theme-color" content="#050505">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script>tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:{400:'#fb923c',500:'#f97316',600:'#ea580c'},accent:{400:'#fbbf24',500:'#f59e0b',600:'#d97706'},surface:{50:'#fafafa',100:'#f5f5f5',200:'#e5e5e5',700:'#1f1f1f',800:'#171717',900:'#0a0a0a',950:'#050505'},profit:'#10b981',loss:'#ef4444',neutral:'#6b7280'}}}}</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#050505;overflow-x:hidden}
+        .glass{background:rgba(23,23,23,0.7);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.05)}
+        .glass-light{background:rgba(255,255,255,0.03);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08)}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+        @keyframes slideIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideInRight{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}
+        @keyframes pulse-ring{0%{transform:scale(0.8);opacity:1}100%{transform:scale(2);opacity:0}}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        @keyframes newSignal{0%{background:rgba(251,191,36,0.3)}100%{background:transparent}}
+        @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        @keyframes progressGlow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.3)}50%{box-shadow:0 0 25px rgba(245,158,11,0.7)}}
+        @keyframes shimmerBar{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+        @keyframes trailPulse{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)}50%{box-shadow:0 0 0 8px rgba(16,185,129,0)}}
+        .animate-float{animation:float 3s ease-in-out infinite}
+        .animate-slideIn{animation:slideIn 0.5s ease-out}
+        .animate-slideInRight{animation:slideInRight 0.3s ease-out}
+        .animate-new-signal{animation:newSignal 2s ease-out}
+        .animate-progress{animation:progressGlow 2s ease-in-out infinite}
+        .animate-shimmer{animation:shimmerBar 2s infinite}
+        .animate-trail-pulse{animation:trailPulse 2s ease-in-out infinite}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+        .toast{position:fixed;top:20px;right:20px;z-index:9999;animation:slideInRight 0.3s ease-out;max-width:350px}
+        .pulse-dot{width:8px;height:8px;border-radius:50%;background:#10b981;position:relative;display:inline-block}
+        .pulse-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:#10b981;animation:pulse-ring 1.5s ease-out infinite}
+        .pulse-dot-gold{width:8px;height:8px;border-radius:50%;background:#f59e0b;position:relative;display:inline-block}
+        .pulse-dot-gold::after{content:'';position:absolute;inset:0;border-radius:50%;background:#f59e0b;animation:pulse-ring 1s ease-out infinite}
+        .nav-item{transition:all 0.2s ease;position:relative}
+        .nav-item.active{color:#f59e0b;background:rgba(245,158,11,0.1)}
+        .nav-item.active::before{content:'';position:absolute;left:0;top:10%;height:80%;width:3px;background:#f59e0b;border-radius:0 2px 2px 0}
+        .card-hover{transition:all 0.2s ease}
+        .card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,0.4);border-color:rgba(251,191,36,0.15)}
+        .ticker-wrap{overflow:hidden}.ticker-content{animation:ticker 30s linear infinite;white-space:nowrap;display:inline-block}
+        .trail-active{background:rgba(16,185,129,0.15);border-left:3px solid #10b981}
+        .trail-inactive{background:rgba(107,114,128,0.1);border-left:3px solid #6b7280}
+        .aff-tier-node{transition:all 0.5s cubic-bezier(0.4,0,0.2,1)}
+        .line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        @keyframes confetti{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(-300px) rotate(720deg);opacity:0}}
+        @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+        @keyframes glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.3)}50%{box-shadow:0 0 35px rgba(245,158,11,0.9)}}
+        @keyframes bounceIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:1}}
+        @keyframes slideUp{0%{transform:translateY(100%);opacity:0}100%{transform:translateY(0);opacity:1}}
+        @keyframes pulse-gold{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.4)}50%{box-shadow:0 0 30px rgba(245,158,11,0.9),0 0 60px rgba(245,158,11,0.4)}}
+        @keyframes raceMove{0%{left:0}100%{left:calc(100% - 30px)}}
+        @keyframes lootOpen{0%{transform:scale(1) rotate(0)}50%{transform:scale(1.3) rotate(10deg)}100%{transform:scale(1) rotate(0)}}
+        .animate-confetti{animation:confetti 2.5s ease-out forwards}
+        .animate-shake{animation:shake 0.6s ease-in-out}
+        .animate-glow{animation:glow 1.5s ease-in-out infinite}
+        .animate-bounceIn{animation:bounceIn 0.5s ease-out}
+        .animate-slideUp{animation:slideUp 0.4s ease-out}
+        .animate-pulse-gold{animation:pulse-gold 2s ease-in-out infinite}
+        .animate-loot-open{animation:lootOpen 0.5s ease-in-out}
+        .crash-overlay{position:fixed;inset:0;background:rgba(239,68,68,0.15);z-index:44;pointer-events:none;animation:shake 0.5s ease-in-out}
+        @keyframes neonPulse{0%,100%{text-shadow:0 0 10px #f59e0b,0 0 20px #f59e0b}50%{text-shadow:0 0 30px #f59e0b,0 0 60px #f97316,0 0 80px #f59e0b}}
+        @keyframes warClash{0%{transform:translateX(0)}40%{transform:translateX(-10px)}60%{transform:translateX(10px)}100%{transform:translateX(0)}}
+        @keyframes fireTornado{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(180deg) scale(1.3)}100%{transform:rotate(360deg) scale(1)}}
+        @keyframes particleFloat{0%{transform:translateY(0) translateX(0);opacity:1}100%{transform:translateY(-200px) translateX(var(--x));opacity:0}}
+        @keyframes scanLine{0%{top:-100%}100%{top:100%}}
+        .animate-neon{animation:neonPulse 2s ease-in-out infinite}
+        .animate-war{animation:warClash 0.3s ease-in-out}
+        .animate-tornado{animation:fireTornado 0.8s ease-in-out}
+        .fire-particle{position:absolute;pointer-events:none;animation:particleFloat 1.5s ease-out forwards}
+        .scan-line{position:absolute;left:0;width:100%;height:2px;background:rgba(245,158,11,0.3);animation:scanLine 3s linear infinite;pointer-events:none}
+        @media(max-width:1024px){.sidebar{transform:translateX(-100%);transition:transform 0.3s ease;position:fixed;z-index:50;height:100vh}.sidebar.open{transform:translateX(0)}.sidebar-overlay{display:none}.sidebar-overlay.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40}}
+    </style>
+</head>
+<body class="bg-surface-950 text-white font-sans">
+
+<div id="toastContainer"></div>
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div class="flex min-h-screen">
+
+<aside id="sidebar" class="sidebar w-64 glass border-r border-white/5 flex flex-col p-4 gap-1 z-50 lg:translate-x-0">
+    <div class="flex items-center gap-3 px-3 py-4 mb-4 border-b border-white/5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center text-black font-bold text-lg">A</div>
+        <div><h1 class="font-bold text-base bg-gradient-to-r from-accent-400 to-primary-400 bg-clip-text text-transparent">AetherTrade</h1><p class="text-xs text-neutral flex items-center gap-1"><span class="pulse-dot"></span> LIVE</p></div>
+    </div>
+    <nav class="flex flex-col gap-1 flex-1">
+        <button onclick="navigate('market')" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" data-route="market"><i class="fas fa-chart-bar w-5"></i> Market</button>
+        <button onclick="navigate('signals')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="signals"><i class="fas fa-chart-line w-5"></i> Live Signals</button>
+        <button onclick="navigate('positions')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="positions"><i class="fas fa-layer-group w-5"></i> Positions</button>
+        <button onclick="navigate('history')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="history"><i class="fas fa-clock-rotate-left w-5"></i> History</button>
+        <button onclick="navigate('affiliate')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="affiliate"><i class="fas fa-users w-5"></i> Affiliate</button>
+        <button onclick="navigate('payments')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="payments"><i class="fas fa-credit-card w-5"></i> Payments</button>
+        <button onclick="navigate('license')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="license"><i class="fas fa-id-card w-5"></i> License</button>
+        <button onclick="navigate('settings')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="settings"><i class="fas fa-gear w-5"></i> Settings</button>
+        <button onclick="window.open('broascast.html','_blank')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all hover:bg-accent-400/10">
+            <i class="fas fa-broadcast-tower w-5 text-accent-400"></i> Broascast
+        </button>
+        <button onclick="navigate('admin')" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral hover:text-white transition-all" data-route="admin" id="adminNavBtn" style="display:none"><i class="fas fa-crown w-5"></i> Admin</button>
+    </nav>
+    <div class="mt-auto flex flex-col gap-2 pt-4 border-t border-white/5">
+        <a href="https://t.me/AetherTradeBot" target="_blank" class="glass-light rounded-xl p-3 flex items-center gap-2 text-sm"><i class="fab fa-telegram text-accent-400"></i> Open Bot</a>
+        <div class="glass-light rounded-xl p-3"><p class="text-xs text-neutral">Support</p><a href="https://t.me/rimuru_genkai" target="_blank" class="text-accent-400 text-xs">@rimuru_genkai</a></div>
+        <p class="text-[10px] text-neutral text-center">v2.8 TERMINAL</p>
+    </div>
+</aside>
+
+<main class="flex-1 p-4 lg:p-6 overflow-y-auto max-h-screen">
+    <header class="flex items-center justify-between mb-6 animate-slideIn">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleSidebar()" class="lg:hidden glass rounded-xl p-2"><i class="fas fa-bars"></i></button>
+            <div><h2 class="text-xl lg:text-2xl font-bold" id="pageTitle">Market</h2><p class="text-sm text-neutral" id="pageSubtitle">Live chart & performance</p></div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="hidden sm:flex items-center gap-2 glass-light rounded-xl px-3 py-2 text-sm"><span id="headerBalance">$0</span><span class="text-neutral">|</span><span class="text-profit" id="headerPL">+$0</span></div>
+            <div class="flex items-center gap-2 glass-light rounded-xl px-3 py-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center text-black font-bold text-xs">U</div><span class="hidden sm:block text-sm" id="headerUser">Trader</span></div>
+        </div>
+    </header>
+
+    <div class="glass-light rounded-2xl px-4 py-2 overflow-hidden mb-4 ticker-wrap"><div class="ticker-content flex gap-8 text-sm" id="liveTicker"><span>XAU/USD <span class="text-profit" id="tickerXAU">---</span></span><span>BTC/USD <span class="text-profit" id="tickerBTC">---</span></span><span>EUR/USD <span id="tickerEUR">---</span></span><span>AAPL <span id="tickerAAPL">---</span></span><span>TSLA <span id="tickerTSLA">---</span></span></div></div>
+        
+<!-- PAGE: MARKET -->
+<div id="page-market" class="page-content space-y-4">
+    <div class="glass-light rounded-2xl p-4">
+        <div class="flex flex-wrap gap-2 mb-3">
+            <button onclick="changeChart('XAUUSD','15')" class="chart-pair-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10 active bg-accent-400/20 text-accent-400">XAUUSD</button>
+            <button onclick="changeChart('BTCUSD','15')" class="chart-pair-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">BTCUSD</button>
+            <button onclick="changeChart('EURUSD','15')" class="chart-pair-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">EURUSD</button>
+            <button onclick="changeChart('AAPL','1D')" class="chart-pair-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">AAPL</button>
+            <button onclick="changeChart('TSLA','1D')" class="chart-pair-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">TSLA</button>
+            <span class="text-neutral mx-2">|</span>
+            <button onclick="changeChart(currentPair,'5')" class="chart-tf-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">5M</button>
+            <button onclick="changeChart(currentPair,'15')" class="chart-tf-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10 active bg-accent-400/20 text-accent-400">15M</button>
+            <button onclick="changeChart(currentPair,'60')" class="chart-tf-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">1H</button>
+            <button onclick="changeChart(currentPair,'240')" class="chart-tf-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">4H</button>
+            <button onclick="changeChart(currentPair,'1D')" class="chart-tf-btn glass rounded-full px-3 py-1.5 text-xs hover:bg-white/10">1D</button>
+        </div>
+        <div class="tradingview-widget-container h-[400px] rounded-xl overflow-hidden"><div id="tv_chart"></div></div>
+    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass-light rounded-2xl p-5 card-hover"><span class="text-xs text-neutral">Balance</span><p class="text-2xl font-bold" id="dashBalance">$0</p></div>
+        <div class="glass-light rounded-2xl p-5 card-hover"><span class="text-xs text-neutral">Equity</span><p class="text-2xl font-bold" id="dashEquity">$0</p></div>
+        <div class="glass-light rounded-2xl p-5 card-hover"><span class="text-xs text-neutral">Open Pos</span><p class="text-2xl font-bold" id="dashOpen">0</p></div>
+        <div class="glass-light rounded-2xl p-5 card-hover"><span class="text-xs text-neutral">Today P/L</span><p class="text-2xl font-bold profit-positive" id="dashPL">$0</p></div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="glass-light rounded-2xl p-5"><h3 class="font-bold mb-3">Live Signals</h3><div id="marketSignals" class="max-h-80 overflow-y-auto"><p class="text-neutral text-sm text-center py-4">Loading...</p></div></div>
+        <div class="glass-light rounded-2xl p-5"><h3 class="font-bold mb-3">Open Positions</h3><div id="marketPositions" class="max-h-80 overflow-y-auto"><p class="text-neutral text-sm text-center py-4">Loading...</p></div></div>
+    </div>
+</div>
+
+<!-- PAGE: SIGNALS -->
+<div id="page-signals" class="page-content hidden space-y-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-3">XAU/USD</h3><div id="xauSignalLive"><p class="text-neutral text-sm">Waiting...</p></div></div>
+        <div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-3">BTC/USD</h3><div id="btcSignalLive"><p class="text-neutral text-sm">Waiting...</p></div></div>
+    </div>
+</div>
+
+<!-- PAGE: POSITIONS -->
+<div id="page-positions" class="page-content hidden space-y-4">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-2">
+        <div>
+            <h2 class="text-2xl font-bold">Open Positions</h2>
+            <p class="text-sm text-neutral" id="posLastUpdate">EA Live: -- <span class="text-xs text-neutral ml-2" id="sessionIndicator"></span></p>
+        </div>
+        <button onclick="emergencyStop()" class="glass border-2 border-loss text-loss font-bold px-5 py-3 rounded-xl text-sm hover:bg-loss/10 transition-all">
+            <i class="fas fa-shield-halved mr-2"></i>EMERGENCY STOP
+        </button>
+    </div>
+
+    <!-- Positions List -->
+    <div id="positionsList" class="space-y-3">
+        <p class="text-neutral text-center py-8">Register license first.</p>
+    </div>
+
+    <!--  TRAILING MONITOR v4.0 ULTIMATE  -->
+    <div class="glass-light rounded-2xl p-5 mt-6 border-l-4 border-accent-400">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center">
+                    <i class="fas fa-flag-checkered text-black"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg">Trailing Monitor</h3>
+                    <p class="text-xs text-neutral flex items-center gap-2">
+                        <span class="pulse-dot-gold"></span> 
+                        <span id="trailNextCheck">Next check: --</span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="exportTrailCSV()" class="glass rounded-lg px-3 py-2 text-xs hover:bg-white/10 transition-all" title="Export CSV">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button onclick="copyTrailStatus()" class="glass rounded-lg px-3 py-2 text-xs hover:bg-white/10 transition-all" title="Copy Status">
+                    <i class="fas fa-copy"></i>
+                </button>
+                <button onclick="loadTrailingStatus()" class="glass rounded-lg px-3 py-2 text-xs hover:bg-white/10 transition-all" title="Refresh">
+                    <i class="fas fa-rotate"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Pair Tabs -->
+        <div class="flex gap-2 mb-4">
+            <button onclick="switchTrailPair('BTC/USD')" id="trailTabBTC" 
+                    class="trail-tab-btn glass rounded-full px-4 py-2 text-sm font-medium border-2 border-accent-400 bg-accent-400/10 text-accent-400">
+                <i class="fab fa-bitcoin mr-1"></i> BTC/USD
+            </button>
+            <button onclick="switchTrailPair('XAU/USD')" id="trailTabXAU" 
+                    class="trail-tab-btn glass rounded-full px-4 py-2 text-sm font-medium border-2 border-transparent text-neutral hover:text-white">
+                <i class="fas fa-coins mr-1"></i> XAU/USD
+            </button>
+        </div>
+
+        <!-- Summary Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div class="glass rounded-xl p-4 text-center card-hover">
+                <p class="text-xs text-neutral mb-1">Total Trail</p>
+                <p class="text-2xl font-bold text-white" id="trailTotal">--</p>
+                <p class="text-xs text-neutral mt-1">configured</p>
+            </div>
+            <div class="glass rounded-xl p-4 text-center card-hover border-t-2 border-profit">
+                <p class="text-xs text-neutral mb-1">Active</p>
+                <p class="text-2xl font-bold text-profit" id="trailActive">--</p>
+                <p class="text-xs text-neutral mt-1">trailing</p>
+            </div>
+            <div class="glass rounded-xl p-4 text-center card-hover border-t-2 border-yellow-500">
+                <p class="text-xs text-neutral mb-1">Pending</p>
+                <p class="text-2xl font-bold text-yellow-400" id="trailPending">--</p>
+                <p class="text-xs text-neutral mt-1">waiting trigger</p>
+            </div>
+            <div class="glass rounded-xl p-4 text-center card-hover border-t-2 border-accent-400">
+                <p class="text-xs text-neutral mb-1">Profit Locked</p>
+                <p class="text-2xl font-bold text-accent-400" id="trailProfitLocked">--</p>
+                <p class="text-xs text-neutral mt-1">secured</p>
+            </div>
+        </div>
+
+        <!-- Progress Overview -->
+        <div class="glass rounded-xl p-4 mb-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-neutral">Overall Trail Activation</span>
+                <span class="text-xs font-bold text-accent-400" id="trailOverallPct">0%</span>
+            </div>
+            <div class="w-full h-3 bg-white/5 rounded-full overflow-hidden">
+                <div id="trailOverallBar" class="h-full rounded-full bg-gradient-to-r from-yellow-500 via-accent-400 to-profit transition-all duration-700" style="width:0%"></div>
+            </div>
+        </div>
+
+        <!-- Per-Position Detail -->
+        <div class="space-y-2 max-h-[500px] overflow-y-auto" id="trailDetailList">
+            <div class="text-center py-12">
+                <div class="inline-block glass rounded-2xl p-6">
+                    <p class="text-4xl mb-3"></p>
+                    <p class="text-neutral font-medium">Waiting for EA data...</p>
+                    <p class="text-xs text-neutral mt-2">EA uploads trailing status every 15 seconds</p>
+                    <div class="mt-3 flex items-center justify-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-neutral animate-pulse"></span>
+                        <span class="w-2 h-2 rounded-full bg-neutral animate-pulse" style="animation-delay:0.2s"></span>
+                        <span class="w-2 h-2 rounded-full bg-neutral animate-pulse" style="animation-delay:0.4s"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-white/5 text-xs text-neutral">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-400"></span> Active</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-400"></span> Close</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-yellow-400"></span> Near</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-400"></span> Mid</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-neutral"></span> Far</span>
+            <span class="flex items-center gap-1.5"><i class="fas fa-clock text-yellow-400"></i> Candle close check</span>
+        </div>
+    </div>
+</div>
+
+<!-- PAGE: HISTORY -->
+<div id="page-history" class="page-content hidden"><div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-4">Trade History</h3><table class="w-full text-sm"><thead><tr class="text-neutral border-b border-white/5"><th class="text-left py-3">Date</th><th class="text-left py-3">Pair</th><th class="text-left py-3">Type</th><th class="text-right py-3">Entry</th><th class="text-right py-3">P/L</th></tr></thead><tbody id="historyBody"><tr><td colspan="5" class="text-center py-8 text-neutral">No trades yet</td></tr></tbody></table></div></div>
+
+<!-- PAGE: AFFILIATE (ULTIMATE v3.0) -->
+<div id="page-affiliate" class="page-content hidden space-y-5">
+
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-500/20 via-surface-800 to-primary-600/20 border border-accent-400/20 p-6 lg:p-8 animate-slideIn">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-accent-400/20 to-primary-500/10 rounded-full blur-5xl -translate-y-1/2 translate-x-1/4"></div>
+        <div class="absolute bottom-0 left-1/2 w-64 h-64 bg-gradient-to-tr from-profit/10 to-transparent rounded-full blur-4xl"></div>
+        <div class="relative z-10 flex flex-col lg:flex-row items-center gap-6">
+            <div class="flex-1 text-center lg:text-left">
+                <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-xs mb-4">
+                    <span class="w-2 h-2 rounded-full bg-profit animate-pulse"></span>
+                    <span class="text-neutral">Affiliate Program v3.0</span>
+                </div>
+                <h1 class="text-3xl lg:text-4xl font-black mb-2 leading-tight">
+                    Earn Up to <span class="bg-gradient-to-r from-accent-400 to-primary-400 bg-clip-text text-transparent">Rp 5.000.000</span> <span class="text-white">/bulan</span>
+                </h1>
+                <p class="text-neutral text-sm lg:text-base mb-2 max-w-lg">20% komisi permanen dari setiap referral yang berlangganan. <b>Tanpa batas, tanpa syarat tersembunyi.</b></p>
+                <div class="flex flex-wrap gap-3 justify-center lg:justify-start text-xs">
+                    <div class="flex items-center gap-1 glass-light rounded-full px-3 py-1.5"><span class="text-profit">&#9989;</span> Komisi instant</div>
+                    <div class="flex items-center gap-1 glass-light rounded-full px-3 py-1.5"><span class="text-profit">&#9989;</span> Lifetime earning</div>
+                    <div class="flex items-center gap-1 glass-light rounded-full px-3 py-1.5"><span class="text-profit">&#9989;</span> Withdraw anytime</div>
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-5 text-center min-w-[220px]">
+                <p class="text-xs text-neutral mb-1">Potensi Bulanan</p>
+                <p class="text-4xl font-black text-accent-400" id="affPotential">Rp 0</p>
+                <p class="text-xs text-neutral mt-1" id="affPotentialDetail">0 refs &#215; Rp 150K = Rp 0</p>
+                <div class="mt-3 glass-light rounded-xl p-3">
+                    <p class="text-[10px] text-neutral">&#128176; Total Earned</p>
+                    <p class="text-xl font-bold text-profit" id="affTotalEarned">Rp 0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="glass-light rounded-2xl p-5 lg:col-span-1 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-accent-400/20 to-transparent rounded-full blur-2xl"></div>
+            <p class="text-xs text-neutral uppercase tracking-widest mb-2">Current Rank</p>
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center text-3xl shadow-lg shadow-accent-400/20" id="affRankEmoji">&#129351;</div>
+                <div>
+                    <p class="text-xl font-black" id="affRankName">SILVER</p>
+                    <p class="text-xs text-neutral">Rp 300K/ref</p>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <div class="flex justify-between text-xs"><span class="text-neutral">Progress to <b class="text-accent-400" id="affNextTier">DIAMOND</b></span><span id="affProgressPercent">60%</span></div>
+                <div class="w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-accent-400 to-primary-500 rounded-full transition-all duration-700 relative" style="width:60%" id="affProgressBar">
+                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-neutral text-right" id="affNeedMore">4 referrals to DIAMOND</p>
+            </div>
+        </div>
+        
+        <div class="lg:col-span-2 grid grid-cols-2 gap-3">
+            <div class="glass-light rounded-2xl p-4 card-hover">
+                <p class="text-2xl mb-1">&#128101;</p>
+                <p class="text-2xl font-black" id="affReferrals">0</p>
+                <p class="text-xs text-neutral">Total Referrals</p>
+                <div class="mt-2 flex items-center gap-1 text-[10px] text-profit"><span>&#9650;</span> <span id="affRefsGrowth">0 this month</span></div>
+            </div>
+            <div class="glass-light rounded-2xl p-4 card-hover">
+                <p class="text-2xl mb-1">&#128184;</p>
+                <p class="text-2xl font-black text-accent-400" id="affTotal">Rp 0</p>
+                <p class="text-xs text-neutral">Total Commission</p>
+                <div class="mt-2 flex items-center gap-1 text-[10px] text-neutral"><span>&#9203;</span> <span id="affPendingAmount">Rp 0 pending</span></div>
+            </div>
+            <div class="glass-light rounded-2xl p-4 card-hover">
+                <p class="text-2xl mb-1">&#9989;</p>
+                <p class="text-2xl font-black text-profit" id="affPaid">Rp 0</p>
+                <p class="text-xs text-neutral">Paid Out</p>
+                <div class="mt-2 flex items-center gap-1 text-[10px] text-neutral"><span>&#128197;</span> <span id="affLastPaid">No withdrawals</span></div>
+            </div>
+            <div class="glass-light rounded-2xl p-4 card-hover">
+                <p class="text-2xl mb-1">&#127919;</p>
+                <p class="text-2xl font-black" id="affConvRate">0%</p>
+                <p class="text-xs text-neutral">Conversion Rate</p>
+                <div class="mt-2 flex items-center gap-1 text-[10px] text-neutral"><span>&#128070;</span> <span id="affClicksText">0 clicks</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-light rounded-2xl p-5">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-accent-400/20 flex items-center justify-center"><i class="fas fa-share-alt text-accent-400"></i></span>
+            Share &amp; Earn
+        </h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+                <p class="text-xs text-neutral mb-2">&#128279; Your Referral Link</p>
+                <div class="flex gap-2 mb-3">
+                    <div class="flex-1 glass rounded-xl px-4 py-3 text-sm font-mono truncate bg-surface-900/50 border border-white/5 focus-within:border-accent-400/50 transition-all" id="affLinkDisplay" onclick="copyText('affLink')">Loading...</div>
+                    <button onclick="copyText('affLink')" class="bg-accent-500 text-black font-bold px-4 py-3 rounded-xl text-sm hover:bg-accent-400 transition-all whitespace-nowrap">
+                        <i class="fas fa-copy mr-1"></i> Copy
+                    </button>
+                </div>
+                <input type="text" id="affLink" readonly class="hidden">
+                <p class="text-xs text-neutral mb-2">&#128241; Share Directly</p>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="shareTo('telegram')" class="glass rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#0088cc]/20 transition-all hover:border-[#0088cc]/50">
+                        <i class="fab fa-telegram text-[#0088cc] text-lg"></i> Telegram
+                    </button>
+                    <button onclick="shareTo('whatsapp')" class="glass rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#25D366]/20 transition-all hover:border-[#25D366]/50">
+                        <i class="fab fa-whatsapp text-[#25D366] text-lg"></i> WhatsApp
+                    </button>
+                    <button onclick="shareTo('discord')" class="glass rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#5865F2]/20 transition-all hover:border-[#5865F2]/50">
+                        <i class="fab fa-discord text-[#5865F2] text-lg"></i> Discord
+                    </button>
+                    <button onclick="shareTo('facebook')" class="glass rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#1877F2]/20 transition-all hover:border-[#1877F2]/50">
+                        <i class="fab fa-facebook text-[#1877F2] text-lg"></i> Facebook
+                    </button>
+                </div>
+            </div>
+            <div>
+                <p class="text-xs text-neutral mb-2">&#128172; Template Pesan</p>
+                <div class="space-y-2">
+                    <div class="glass rounded-xl p-3 cursor-pointer hover:bg-white/5 transition-all group" onclick="copyAffMessage('short')">
+                        <div class="flex justify-between items-start">
+                            <p class="text-xs font-bold">&#9993;&#65039; Pesan Singkat</p>
+                            <span class="text-[10px] text-neutral opacity-0 group-hover:opacity-100 transition-all">Click to copy</span>
+                        </div>
+                        <p class="text-xs text-neutral mt-1 line-clamp-2">&#128293; AetherTrade AI — Trading signals akurat! Daftar pakai link gw dapet diskon &#127873;</p>
+                    </div>
+                    <div class="glass rounded-xl p-3 cursor-pointer hover:bg-white/5 transition-all group" onclick="copyAffMessage('detailed')">
+                        <div class="flex justify-between items-start">
+                            <p class="text-xs font-bold">&#128221; Pesan Detail</p>
+                            <span class="text-[10px] text-neutral opacity-0 group-hover:opacity-100 transition-all">Click to copy</span>
+                        </div>
+                        <p class="text-xs text-neutral mt-1 line-clamp-2">&#128202; AetherTrade AI — Trading Terminal Profesional! AI Signals, Auto Trading EA, Win Rate 70%+. Join sekarang!</p>
+                    </div>
+                    <div class="glass rounded-xl p-3 cursor-pointer hover:bg-white/5 transition-all group" onclick="copyAffMessage('testimonial')">
+                        <div class="flex justify-between items-start">
+                            <p class="text-xs font-bold">&#127775; Testimonial Style</p>
+                            <span class="text-[10px] text-neutral opacity-0 group-hover:opacity-100 transition-all">Click to copy</span>
+                        </div>
+                        <p class="text-xs text-neutral mt-1 line-clamp-2">Gw udah pake AetherTrade 3 bulan, profit konsisten! Ini linknya, mumpung ada promo &#127919;</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-light rounded-2xl p-5">
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-accent-400/20 flex items-center justify-center"><i class="fas fa-crown text-accent-400"></i></span>
+            Reward Tiers
+        </h3>
+        <div class="hidden lg:block">
+            <div class="relative">
+                <div class="absolute top-8 left-0 right-0 h-1 bg-white/5 rounded-full"></div>
+                <div class="absolute top-8 left-0 h-1 bg-gradient-to-r from-accent-400 to-primary-500 rounded-full transition-all duration-700" style="width:60%" id="affTierLine"></div>
+                <div class="grid grid-cols-5 gap-2 relative">
+                    <div class="text-center" data-tier="star">
+                        <div class="w-16 h-16 rounded-2xl glass flex items-center justify-center text-2xl mx-auto mb-2 aff-tier-node" id="tierNode_star">&#11088;</div>
+                        <p class="font-bold text-xs">STAR</p><p class="text-[10px] text-neutral">1 Ref</p><p class="text-xs text-accent-400 font-bold">Rp 50K</p><p class="text-[10px] text-neutral">/ref</p>
+                    </div>
+                    <div class="text-center" data-tier="bronze">
+                        <div class="w-16 h-16 rounded-2xl glass flex items-center justify-center text-2xl mx-auto mb-2 aff-tier-node" id="tierNode_bronze">&#129352;</div>
+                        <p class="font-bold text-xs">BRONZE</p><p class="text-[10px] text-neutral">3 Refs</p><p class="text-xs text-accent-400 font-bold">Rp 150K</p><p class="text-[10px] text-neutral">/ref</p>
+                    </div>
+                    <div class="text-center" data-tier="silver">
+                        <div class="w-16 h-16 rounded-2xl glass flex items-center justify-center text-2xl mx-auto mb-2 aff-tier-node" id="tierNode_silver">&#129351;</div>
+                        <p class="font-bold text-xs">SILVER</p><p class="text-[10px] text-neutral">5 Refs</p><p class="text-xs text-accent-400 font-bold">Rp 300K</p><p class="text-[10px] text-neutral">/ref</p>
+                    </div>
+                    <div class="text-center" data-tier="diamond">
+                        <div class="w-16 h-16 rounded-2xl glass flex items-center justify-center text-2xl mx-auto mb-2 aff-tier-node" id="tierNode_diamond">&#128142;</div>
+                        <p class="font-bold text-xs">DIAMOND</p><p class="text-[10px] text-neutral">10 Refs</p><p class="text-xs text-accent-400 font-bold">Rp 1M</p><p class="text-[10px] text-neutral">/ref</p>
+                    </div>
+                    <div class="text-center" data-tier="champion">
+                        <div class="w-16 h-16 rounded-2xl glass flex items-center justify-center text-2xl mx-auto mb-2 aff-tier-node" id="tierNode_champion">&#128081;</div>
+                        <p class="font-bold text-xs">CHAMPION</p><p class="text-[10px] text-neutral">25 Refs</p><p class="text-xs text-accent-400 font-bold">Rp 3M</p><p class="text-[10px] text-neutral">/ref</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="lg:hidden space-y-2">
+            <div class="glass rounded-xl p-3 flex items-center gap-3 aff-tier-mobile" data-tier="star">
+                <div class="w-10 h-10 rounded-xl bg-profit/20 flex items-center justify-center text-xl aff-tier-node-mobile">&#11088;</div>
+                <div class="flex-1"><p class="font-bold text-sm">STAR</p><p class="text-[10px] text-neutral">1 Referral</p></div>
+                <div class="text-right"><p class="text-sm text-accent-400 font-bold">Rp 50K</p><p class="text-[10px] text-neutral">/ref</p></div>
+                <span class="text-profit text-xs">&#9989;</span>
+            </div>
+            <div class="glass rounded-xl p-3 flex items-center gap-3 aff-tier-mobile" data-tier="bronze">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-xl aff-tier-node-mobile">&#129352;</div>
+                <div class="flex-1"><p class="font-bold text-sm">BRONZE</p><p class="text-[10px] text-neutral">3 Referrals</p></div>
+                <div class="text-right"><p class="text-sm text-accent-400 font-bold">Rp 150K</p><p class="text-[10px] text-neutral">/ref</p></div>
+                <span class="text-profit text-xs">&#9989;</span>
+            </div>
+            <div class="glass rounded-xl p-3 flex items-center gap-3 border-accent-400/50 bg-accent-400/5 aff-tier-mobile" data-tier="silver">
+                <div class="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center text-xl aff-tier-node-mobile">&#129351;</div>
+                <div class="flex-1"><p class="font-bold text-sm text-accent-400">SILVER</p><p class="text-[10px] text-neutral">5 Referrals</p></div>
+                <div class="text-right"><p class="text-sm text-accent-400 font-bold">Rp 300K</p><p class="text-[10px] text-neutral">/ref</p></div>
+                <span class="text-accent-400 text-xs font-bold">CURRENT</span>
+            </div>
+            <div class="glass rounded-xl p-3 flex items-center gap-3 opacity-50 aff-tier-mobile" data-tier="diamond">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-xl aff-tier-node-mobile">&#128142;</div>
+                <div class="flex-1"><p class="font-bold text-sm">DIAMOND</p><p class="text-[10px] text-neutral">10 Referrals</p></div>
+                <div class="text-right"><p class="text-sm text-accent-400 font-bold">Rp 1M</p><p class="text-[10px] text-neutral">/ref</p></div>
+                <span class="text-neutral text-xs">&#128274;</span>
+            </div>
+            <div class="glass rounded-xl p-3 flex items-center gap-3 opacity-50 aff-tier-mobile" data-tier="champion">
+                <div class="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-xl aff-tier-node-mobile">&#128081;</div>
+                <div class="flex-1"><p class="font-bold text-sm">CHAMPION</p><p class="text-[10px] text-neutral">25 Referrals</p></div>
+                <div class="text-right"><p class="text-sm text-accent-400 font-bold">Rp 3M</p><p class="text-[10px] text-neutral">/ref</p></div>
+                <span class="text-neutral text-xs">&#128274;</span>
+            </div>
+        </div>
+        <div class="mt-4 p-3 glass rounded-xl bg-accent-400/5 border border-accent-400/20">
+            <p class="text-xs">&#127873; <b>Bonus Tier:</b> DIAMOND &#8594; Free License MAX 1 bulan | CHAMPION &#8594; Free License MAX 3 bulan + Priority Support + Badge Eksklusif</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="glass-light rounded-2xl p-5">
+            <h3 class="font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-clock-rotate-left text-accent-400"></i> Recent Referrals</h3>
+            <div class="space-y-2 max-h-80 overflow-y-auto" id="affHistoryList">
+                <div class="glass rounded-xl p-4 text-center">
+                    <p class="text-3xl mb-2">&#128640;</p>
+                    <p class="text-sm text-neutral">No referrals yet</p>
+                    <p class="text-xs text-neutral mt-1">Share your link to start earning!</p>
+                </div>
+            </div>
+        </div>
+        <div class="glass-light rounded-2xl p-5">
+            <h3 class="font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-trophy text-accent-400"></i> Top Earners</h3>
+            <div class="space-y-2 max-h-80 overflow-y-auto" id="affLeaderboardList">
+                <p class="text-neutral text-sm text-center py-4">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-light rounded-2xl p-5">
+        <h3 class="font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-circle-info text-accent-400"></i> How It Works</h3>
+        <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="glass rounded-xl p-3"><p class="text-2xl mb-1">&#128279;</p><p class="font-bold text-xs">Share Link</p><p class="text-[10px] text-neutral">Bagikan ke komunitas trading</p></div>
+            <div class="glass rounded-xl p-3"><p class="text-2xl mb-1">&#128101;</p><p class="font-bold text-xs">They Join</p><p class="text-[10px] text-neutral">Daftar &amp; beli license</p></div>
+            <div class="glass rounded-xl p-3"><p class="text-2xl mb-1">&#128176;</p><p class="font-bold text-xs">You Earn 20%</p><p class="text-[10px] text-neutral">Komisi permanen!</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- PAGE: PAYMENTS -->
+<div id="page-payments" class="page-content hidden space-y-4">
+    <div class="glass-light rounded-2xl p-5">
+        <h3 class="font-bold text-lg mb-4">Purchase License</h3>
+        <p class="text-sm text-neutral mb-4">Pilih package untuk memulai trading dengan AetherTrade AI.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div onclick="selectPackage('pro',this)" class="pkg-card glass rounded-2xl p-5 text-center cursor-pointer border-2 border-white/5 hover:border-accent-400/50 transition-all"><p class="text-2xl mb-2">&#129351;</p><p class="font-bold text-lg">Pro</p><p class="text-sm text-neutral">Analisa Manual AI</p><p class="text-2xl font-black text-accent-400 my-2">Rp 150K</p><p class="text-xs text-neutral">/bulan</p></div>
+            <div onclick="selectPackage('max',this)" class="pkg-card glass rounded-2xl p-5 text-center cursor-pointer border-2 border-white/5 hover:border-accent-400/50 transition-all relative"><div class="absolute top-3 right-3 bg-accent-500 text-black text-xs px-2 py-1 rounded-full font-bold">POPULER</div><p class="text-2xl mb-2">&#129351;</p><p class="font-bold text-lg">Max</p><p class="text-sm text-neutral">Manual + Auto Trading</p><p class="text-2xl font-black text-accent-400 my-2">Rp 350K</p><p class="text-xs text-neutral">/bulan</p></div>
+        </div>
+        <div id="paymentDetails" class="hidden glass-light rounded-2xl p-5 text-center">
+            <p class="text-lg font-bold mb-3">Ringkasan</p>
+            <p class="text-2xl font-black text-accent-400" id="payTotal">Rp 0</p>
+            <button onclick="showManualPayment()" class="bg-gradient-to-r from-accent-400 to-primary-500 text-black font-bold px-8 py-4 rounded-xl text-lg w-full sm:w-auto mt-4">Pay Now — Manual Transfer</button>
+            <p class="text-xs text-neutral mt-2">Midtrans coming soon</p>
+        </div>
+    </div>
+</div>
+
+<!-- PAGE: LICENSE -->
+<div id="page-license" class="page-content hidden space-y-4">
+    <div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-4">License Details</h3><div id="licenseDetails"><p class="text-neutral">Register license to see details.</p></div></div>
+    <div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-4">Payment History</h3><div id="paymentHistory"><p class="text-neutral text-sm">No payments yet.</p></div></div>
+    <div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-3">&#129534; Invoice</h3><div id="invoiceList"><p class="text-neutral text-sm">No invoice yet.</p></div></div>
+</div>
+
+<!-- PAGE: SETTINGS -->
+<div id="page-settings" class="page-content hidden space-y-4">
+    <div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-3">Register License</h3><div class="flex gap-2"><input type="text" id="regKey" placeholder="AT-XXXX" class="flex-1 bg-surface-900 border border-white/10 rounded-xl px-4 py-3 text-sm"><button onclick="registerLicense()" class="bg-accent-500 text-black font-bold px-6 py-3 rounded-xl text-sm">Register</button></div></div>
+    <div class="glass-light rounded-2xl p-5"><h3 class="font-bold text-lg mb-3">Download EA</h3><button onclick="window.open('https://t.me/AetherTradeBot','_blank')" class="bg-accent-500 text-black font-bold px-4 py-2 rounded-lg text-sm"><i class="fab fa-telegram"></i> Open Bot &#8594; /download_ea</button></div>
+</div>
+
+<!-- PAGE: ADMIN -->
+<div id="page-admin" class="page-content hidden space-y-4">
+    <div class="glass-light rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4"><h3 class="font-bold text-lg">Admin Panel</h3></div>
+        <div class="flex gap-2 mb-4">
+            <button onclick="adminTab('licenses',this)" class="admin-tab-btn glass rounded-full px-4 py-2 text-xs active bg-accent-400/20 text-accent-400">Licenses</button>
+            <button onclick="adminTab('payments',this)" class="admin-tab-btn glass rounded-full px-4 py-2 text-xs">Payments</button>
+        </div>
+        <div id="adminLicenses">
+            <div class="flex items-center justify-between mb-3"><h3 class="font-bold">License Manager</h3><button onclick="showAddLicenseModal()" class="bg-accent-500 text-black font-bold px-3 py-1.5 rounded-lg text-xs"><i class="fas fa-plus"></i> Add</button></div>
+            <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-neutral border-b border-white/5"><th class="text-left py-3">Key</th><th class="text-left py-3">Owner</th><th class="text-left py-3">Package</th><th class="text-left py-3">Status</th><th class="text-left py-3">Expires</th><th class="text-left py-3">Actions</th></tr></thead><tbody id="adminLicenseList"><tr><td colspan="6" class="text-center py-8 text-neutral">Loading...</td></tr></tbody></table></div>
+        </div>
+        <div id="adminPayments" class="hidden">
+            <h3 class="font-bold mb-3">Payment Queue</h3>
+            <div class="flex gap-2 mb-4">
+                <button onclick="filterPayments('all',this)" class="pay-filter-btn glass rounded-full px-4 py-1.5 text-xs active bg-accent-400/20 text-accent-400">All</button>
+                <button onclick="filterPayments('pending_verification',this)" class="pay-filter-btn glass rounded-full px-4 py-1.5 text-xs text-yellow-500">Pending</button>
+                <button onclick="filterPayments('approved',this)" class="pay-filter-btn glass rounded-full px-4 py-1.5 text-xs text-profit">Approved</button>
+                <button onclick="filterPayments('rejected',this)" class="pay-filter-btn glass rounded-full px-4 py-1.5 text-xs text-loss">Rejected</button>
+            </div>
+            <div id="adminPaymentList"><p class="text-neutral text-sm">Loading...</p></div>
+        </div>
+    </div>
+</div>
+
+</main>
+</div>
+
+<!-- NOTIFICATION BELL + DROPDOWN -->
+<div class="fixed top-4 right-20 z-50">
+    <button onclick="toggleNotifications()" class="glass rounded-xl p-2.5 relative hover:bg-white/10 transition-all">
+        <i class="fas fa-bell text-lg"></i>
+        <span id="notifBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-loss text-white text-[10px] font-bold rounded-full flex items-center justify-center">0</span>
+    </button>
+    <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 glass rounded-2xl p-3 max-h-96 overflow-y-auto shadow-2xl border border-white/10">
+        <div class="flex justify-between items-center mb-3">
+            <p class="font-bold text-sm">&#128276; Notifications</p>
+            <button onclick="markAllNotifRead()" class="text-xs text-accent-400 hover:underline">Mark all read</button>
+        </div>
+        <div id="notifList" class="space-y-2">
+            <p class="text-neutral text-xs text-center py-4">No notifications</p>
+        </div>
+    </div>
+</div>
+
+<!-- MANUAL PAYMENT MODAL -->
+<div id="manualPayModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+    <div class="glass-light rounded-2xl p-6 w-full max-w-md animate-slideIn">
+        <h3 class="text-xl font-bold mb-3">Manual Transfer</h3>
+        <p class="text-sm text-neutral mb-4">Transfer tepat jumlah ke salah satu rekening:</p>
+        <div class="space-y-2 mb-4 text-sm">
+            <div class="glass rounded-xl p-3 flex justify-between"><span>DANA</span><span class="font-bold">0859-3001-6248</span></div>
+            <div class="glass rounded-xl p-3 flex justify-between"><span>GoPay</span><span class="font-bold">0859-3001-6248</span></div>
+            <div class="glass rounded-xl p-3 flex justify-between"><span>SEABANK</span><span class="font-bold">9017-9377-7670</span></div>
+            <p class="text-xs text-neutral text-center mt-1">A/N: ANDIKA</p>
+        </div>
+        <p class="text-lg font-bold mb-3">Jumlah: <span class="text-accent-400" id="manualPayAmount">Rp 0</span></p>
+        <button onclick="confirmManualPayment()" class="bg-gradient-to-r from-accent-400 to-primary-500 text-black font-bold px-6 py-3 rounded-xl text-sm w-full mb-2">Konfirmasi Pembayaran</button>
+        <button onclick="document.getElementById('manualPayModal').classList.add('hidden')" class="glass rounded-xl px-6 py-3 text-sm w-full">Batal</button>
+        <p class="text-xs text-neutral text-center mt-3">Admin akan verifikasi dalam 1x24 jam</p>
+    </div>
+</div>
+
+<!-- PAYMENT DETAIL MODAL -->
+<div id="paymentDetailModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+    <div class="glass-light rounded-2xl p-6 w-full max-w-lg animate-slideIn max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold mb-4">Payment Detail</h3>
+        <div id="paymentDetailContent">
+            <p class="text-neutral text-sm">Loading...</p>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="approvePaymentFromModal()" id="btnApprovePayment" class="bg-profit text-white font-bold px-6 py-3 rounded-xl text-sm flex-1">&#9989; Approve</button>
+            <button onclick="rejectPaymentFromModal()" id="btnRejectPayment" class="bg-loss/80 text-white font-bold px-6 py-3 rounded-xl text-sm">&#10060; Reject</button>
+            <button onclick="closePaymentDetail()" class="glass rounded-xl px-6 py-3 text-sm">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<!-- LICENSE MODAL -->
+<div id="licenseModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+    <div class="glass-light rounded-2xl p-6 w-full max-w-md animate-slideIn">
+        <h3 class="text-xl font-bold mb-4" id="licenseModalTitle">Add License</h3>
+        <input type="hidden" id="editLicenseKey">
+        <div class="space-y-3">
+            <div><label class="text-xs text-neutral">License Key</label><input type="text" id="licKey" placeholder="AT-XXXX" class="w-full bg-surface-900 border border-white/10 rounded-xl px-4 py-3 text-sm mt-1"></div>
+            <div><label class="text-xs text-neutral">Owner</label><input type="text" id="licOwner" placeholder="User" class="w-full bg-surface-900 border border-white/10 rounded-xl px-4 py-3 text-sm mt-1"></div>
+            <div><label class="text-xs text-neutral">Package</label><select id="licPackage" class="w-full bg-surface-900 border border-white/10 rounded-xl px-4 py-3 text-sm mt-1"><option value="pro">Pro</option><option value="max">Max</option></select></div>
+            <div><label class="text-xs text-neutral">Account Login</label><input type="text" id="licAccount" placeholder="Nomor MT5" class="w-full bg-surface-900 border border-white/10 rounded-xl px-4 py-3 text-sm mt-1"></div>
+            <div><label class="text-xs text-neutral">Expires</label><input type="date" id="licExpires" class="w-full bg-surface-900 border border-white/10 rounded-xl px-4 py-3 text-sm mt-1"></div>
+            <div class="flex gap-2 pt-3"><button onclick="saveLicense()" class="bg-accent-500 text-black font-bold px-4 py-2 rounded-lg text-sm flex-1">Save</button><button onclick="document.getElementById('licenseModal').classList.add('hidden')" class="glass rounded-xl px-4 py-2 text-sm">Cancel</button></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// CONFIG
+const CONFIG={firebaseURL:"https://aethertrade-signals-default-rtdb.asia-southeast1.firebasedatabase.app/",apiURL:"http://89.21.85.27:8888",adminLicense:"AT-AB100702CB5771F2",telegramBotToken:"8532463057:AAENhEzEK2u6OcgHS2MWDy__wiSZF8OBlFY",telegramChatId:"6000348929",packages:{pro:{name:'Pro',pricePerMonth:150000},max:{name:'Max',pricePerMonth:350000}},paymentMethods:{dana:'0859-3001-6248',gopay:'0859-3001-6248',seabank:'9017-9377-7670',name:'ANDIKA'}};
+firebase.initializeApp({databaseURL:CONFIG.firebaseURL});const db=firebase.database();
+const State={user:{licenseKey:localStorage.getItem('at_license')||'',username:localStorage.getItem('at_username')||'Trader',package:'',expires:''},currentPage:'market',payment:{package:'',months:1}};
+let currentPair='XAUUSD',currentInterval='15',tvWidget=null;
+
+// NAVIGATION
+function navigate(page){
+State.currentPage=page;document.querySelectorAll('.page-content').forEach(p=>p.classList.add('hidden'));
+const target=document.getElementById('page-'+page);if(target)target.classList.remove('hidden');
+document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+const navItem=document.querySelector('[data-route="'+page+'"]');if(navItem)navItem.classList.add('active');
+const titles={market:['Market','Live chart & performance'],signals:['Live Signals','Real-time signals'],positions:['Open Positions','Active trades'],history:['Trade History','Past performance'],affiliate:['Affiliate','Earn 20% commission'],payments:['Payments','Purchase license'],license:['License','Details & status'],settings:['Settings','Manage account'],admin:['Admin','License & Payment Manager']};
+const t2=titles[page]||[page,''];document.getElementById('pageTitle').textContent=t2[0];document.getElementById('pageSubtitle').textContent=t2[1];
+if(page==='market'){loadMarketData();setTimeout(initChart,500);}
+if(page==='signals')loadSignals();if(page==='positions'){loadPositions();startTrailAutoRefresh();}else{if(trailInterval)clearInterval(trailInterval);}
+if(page==='affiliate')loadAffiliate();
+if(page==='admin'){loadAdminLicenses();loadAdminPayments();}
+if(page==='license')loadLicensePage();
+if(window.innerWidth<1024)toggleSidebar(false);
+}
+function toggleSidebar(force){const s=document.getElementById('sidebar'),o=document.getElementById('sidebarOverlay');const open=force!==undefined?force:!s.classList.contains('open');if(open){s.classList.add('open');o.classList.add('open')}else{s.classList.remove('open');o.classList.remove('open')}}
+
+// TOAST
+function showToast(msg,type='info'){const c=document.getElementById('toastContainer');const icons={success:'[OK]',error:'[X]',warning:'[!]',info:'[i]'};const borders={success:'border-l-profit',error:'border-l-loss',warning:'border-l-yellow-500',info:'border-l-neutral'};const colors={success:'text-profit',error:'text-loss',warning:'text-yellow-500',info:'text-white'};const t=document.createElement('div');t.className='toast glass-light rounded-xl px-4 py-3 text-sm font-medium animate-slideInRight border-l-2 '+borders[type]+' '+colors[type];t.innerHTML='<span class="mr-2">'+icons[type]+'</span>'+msg;c.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(100%)';setTimeout(function(){t.remove()},300)},3000)}
+
+// CHART
+function changeChart(pair,interval){currentPair=pair;currentInterval=interval;document.querySelectorAll('.chart-pair-btn').forEach(b=>{b.classList.remove('active','bg-accent-400/20','text-accent-400');if(b.textContent.trim()===pair)b.classList.add('active','bg-accent-400/20','text-accent-400')});document.querySelectorAll('.chart-tf-btn').forEach(b=>{b.classList.remove('active','bg-accent-400/20','text-accent-400');if(b.textContent.trim()===interval+(interval==='1D'?'':'M').replace('60','H').replace('240','H'))b.classList.add('active','bg-accent-400/20','text-accent-400')});initChart()}
+function initChart(){const c=document.getElementById('tv_chart');if(!c||c.offsetParent===null){setTimeout(initChart,500);return}try{if(tvWidget)tvWidget.remove()}catch(e){}const sym='OANDA:'+(currentPair==='XAUUSD'?'XAUUSD':currentPair==='BTCUSD'?'BTCUSD':currentPair==='EURUSD'?'EURUSD':'NASDAQ:'+currentPair);tvWidget=new TradingView.widget({container_id:"tv_chart",symbol:sym,interval:currentInterval,theme:"dark",style:"1",locale:"en",toolbar_bg:"#0a0a0a",hide_top_toolbar:true,save_image:false,height:"100%",width:"100%",autosize:true,studies:["MASimple@tv-basicstudies","RSI@tv-basicstudies","MACD@tv-basicstudies"]})}
+
+// MARKET DATA
+function loadMarketData(){const key=State.user.licenseKey||CONFIG.adminLicense;db.ref('performance/'+key+'/stats').on('value',snap=>{const s=snap.val();if(s){document.getElementById('dashBalance').textContent='$'+(s.balance||0).toLocaleString();document.getElementById('dashEquity').textContent='$'+((s.balance||0)+(s.floating_pnl||0)).toLocaleString();document.getElementById('dashOpen').textContent=s.open_positions||0;document.getElementById('dashPL').textContent=(s.daily_pnl>=0?'+':'')+'$'+(s.daily_pnl||0).toFixed(2);document.getElementById('headerBalance').textContent='$'+(s.balance||0).toLocaleString();document.getElementById('headerPL').textContent=(s.daily_pnl>=0?'+':'')+'$'+(s.daily_pnl||0).toFixed(2)}});
+loadMarketSignals();loadMarketPositions();}
+function loadMarketSignals(){const c=document.getElementById('marketSignals');db.ref('signals/'+CONFIG.adminLicense+'/XAU_USD').on('value',snap=>{const d=snap.val();if(d){let h='<p class="text-xs text-accent-400 font-bold mb-2">XAU/USD</p>';for(let s=1;s<=5;s++){const sig=d[s];if(sig&&sig.dir){const em=sig.dir==='BUY'?'&#128200;':'&#128201;';const trailInfo=sig.trailStart>0?'<span class="text-xs text-neutral">Trail: $'+sig.trailStart+'</span>':'';h+='<div class="glass rounded-xl p-2 text-xs mb-1"><span>'+em+'</span> <b>'+sig.dir+'</b> $'+sig.entry+' SL:$'+sig.sl+' '+trailInfo+'</div>'}}c.innerHTML=h||'<p class="text-neutral text-sm text-center">Waiting...</p>'}else c.innerHTML='<p class="text-neutral text-sm text-center">Waiting...</p>'})}
+function loadMarketPositions(){const c=document.getElementById('marketPositions');const key=State.user.licenseKey||CONFIG.adminLicense;db.ref('performance/'+key+'/pairs').once('value').then(snap=>{const d=snap.val();if(d){let h='';for(const[pair,stats]of Object.entries(d)){h+='<div class="glass rounded-xl p-3 text-sm mb-2"><div class="flex justify-between"><span class="font-bold">'+pair+'</span><span class="text-profit">'+stats.active+' Open</span></div><p class="text-xs text-neutral">WR: '+stats.win_rate+'% | P/L: '+stats.total_profit+'</p></div>'}c.innerHTML=h||'<p class="text-neutral text-sm text-center">No positions</p>'}else c.innerHTML='<p class="text-neutral text-sm text-center">No positions</p>'})}
+
+// SIGNALS
+function loadSignals(){['XAU_USD','BTC_USD'].forEach(pp=>{const tid=pp==='XAU_USD'?'xauSignalLive':'btcSignalLive';const c=document.getElementById(tid);if(!c)return;c.innerHTML='<p class="text-neutral text-sm">Loading...</p>';db.ref('signals/'+CONFIG.adminLicense+'/'+pp).on('value',snap=>{const data=snap.val();if(data){let h='';for(let s=1;s<=5;s++){const d=data[s];if(d&&d.dir){const em=d.dir==='BUY'?'&#128200;':'&#128201;';const trailActive=d.trailStart>0;const trailClass=trailActive?'trail-active':'trail-inactive';const trailText=trailActive?'Trail: $'+d.trailStart+' (Step: '+d.trailStep+')':'Trail: Inactive';h+='<div class="glass rounded-xl p-3 text-sm mb-2 animate-slideIn '+trailClass+'"><span class="text-2xl">'+em+'</span> <span class="font-bold">'+d.dir+'</span> <span class="text-xs text-neutral">'+(d.strategy||'AI')+'</span><div class="grid grid-cols-2 gap-1 text-xs mt-1"><p>Entry: <b>$'+(d.entry||'-')+'</b></p><p>SL: <span class="text-loss">$'+(d.sl||'-')+'</span></p></div><p class="text-xs text-neutral mt-1">&#128202; '+trailText+'</p></div>'}}c.innerHTML=h||'<p class="text-neutral text-sm">Waiting...</p>'}else c.innerHTML='<p class="text-neutral text-sm">Waiting...</p>'})})}
+
+// POSITIONS
+function loadPositions(){const c=document.getElementById('positionsList');const mock=[{pair:'XAU/USD',dir:'BUY',entry:4178,sl:4061,lot:0.01,profit:12.5,trailActive:true,trailStart:4190},{pair:'BTC/USD',dir:'SELL',entry:63370,sl:63470,lot:0.01,profit:-8.2,trailActive:false}];c.innerHTML=mock.map(p=>{const dc=p.dir==='BUY'?'text-profit':'text-loss';const pc=p.profit>=0?'profit-positive':'profit-negative';const tc=p.trailActive?'trail-active':'trail-inactive';const tt=p.trailActive?'Trail: $'+p.trailStart+' (active since '+new Date().toLocaleTimeString()+')':'Trail: Not activated';return'<div class="glass rounded-xl p-4 '+tc+'"><div class="flex justify-between"><div><span class="'+dc+' font-bold">'+p.dir+'</span> <span class="text-sm">'+p.pair+'</span><p class="text-xs text-neutral">Entry: $'+p.entry+' | SL: $'+p.sl+' | Lot: '+p.lot+'</p><p class="text-xs text-neutral mt-1">&#128202; '+tt+'</p></div><div class="text-right"><p class="font-bold '+pc+'">'+(p.profit>=0?'+':'')+'$'+p.profit.toFixed(2)+'</p></div></div></div>'}).join('')}
+function emergencyStop(){if(confirm('Close ALL positions?')){db.ref('signals/'+CONFIG.adminLicense+'/close_all').set({action:'close_all',reason:'Panel Emergency',timestamp:Date.now()});showToast('Emergency stop activated!','warning')}}
+
+// ==========================================
+// AFFILIATE (ULTIMATE v3.0)
+// ==========================================
+const AFF_MESSAGES={short:'[FIRE] AetherTrade AI - Smart Trading!\n\n[OK] AI Signals (XAUUSD/BTC/EURUSD)\n[OK] Auto Trading EA\n[OK] Win Rate 70%+\n\n[GIFT] Daftar pakai link ini: {link}\n\n#Trading #Forex #Crypto',detailed:'[CHART] AetherTrade AI - Professional Trading Terminal\n\nFitur lengkap:\n[GEAR] AI-Powered Trading Signals\n[GEAR] Real-time Firebase Integration\n[GEAR] Auto Trading EA (MT5)\n[GEAR] Multi-Pair Support\n[GEAR] Risk Management System\n\n[MONEY] 20% affiliate commission - gabung gratis!\n\n[LINK] {link}',testimonial:'[STAR] AetherTrade AI Review\n\n"Udah 3 bulan pake, sinyal akurat & EA-nya jalan mulus. Profit konsisten!"\n\nCoba sendiri, daftar di: {link}\n\n#TradingJourney #PassiveIncome'};
+let affId='';
+function loadAffiliate(){affId='AFF-'+(State.user.licenseKey||'DEMO').substring(3,9);const link=window.location.origin+'?ref='+affId;document.getElementById('affLink').value=link;document.getElementById('affLinkDisplay').textContent=link;db.ref('affiliates/'+affId).on('value',snap=>{const d=snap.val()||{};const totalCommission=d.total_commission||0;const pendingCommission=d.pending_commission||0;const paidCommission=d.paid_commission||0;const totalReferrals=d.total_referrals||0;const clicks=d.link_clicks||0;const conversions=d.conversions||0;const refsThisMonth=d.refs_this_month||0;const lastPaidDate=d.last_paid_date||'';updateText('affReferrals',totalReferrals);updateText('affTotal','Rp '+totalCommission.toLocaleString());updateText('affPaid','Rp '+paidCommission.toLocaleString());updateText('affConvRate',(clicks>0?((conversions/clicks)*100).toFixed(1):'0')+'%');updateText('affRefsGrowth',refsThisMonth+' this month');updateText('affPendingAmount','Rp '+pendingCommission.toLocaleString()+' pending');updateText('affClicksText',clicks+' clicks');updateText('affLastPaid',lastPaidDate?'Last: '+formatDate(lastPaidDate):'No withdrawals');updateText('affTotalEarned','Rp '+totalCommission.toLocaleString());const avgPerRef=totalReferrals>0?Math.round(totalCommission/totalReferrals):150000;const potential=totalReferrals*avgPerRef;updateText('affPotential','Rp '+potential.toLocaleString());updateText('affPotentialDetail',totalReferrals+' refs &#215; Rp '+(avgPerRef/1000).toFixed(0)+'K = Rp '+potential.toLocaleString());const tiers=[{name:'STAR',emoji:'&#11088;',min:1,reward:50000,color:'neutral'},{name:'BRONZE',emoji:'&#129352;',min:3,reward:150000,color:'amber-400'},{name:'SILVER',emoji:'&#129351;',min:5,reward:300000,color:'accent-400'},{name:'DIAMOND',emoji:'&#128142;',min:10,reward:1000000,color:'cyan-400'},{name:'CHAMPION',emoji:'&#128081;',min:25,reward:3000000,color:'yellow-400'}];let current=tiers[0],next=tiers[1];for(let i=tiers.length-1;i>=0;i--){if(totalReferrals>=tiers[i].min){current=tiers[i];next=tiers[i+1]||tiers[i];break;}}const needed=next.min-totalReferrals;const progress=next.min===current.min?100:Math.min(100,Math.round(((totalReferrals-current.min)/(next.min-current.min))*100));updateText('affRankEmoji',current.emoji);const rankName=document.getElementById('affRankName');rankName.textContent=current.name;rankName.className='text-xl font-black text-'+current.color;updateText('affNextTier',next.name);updateText('affProgressPercent',progress+'%');document.getElementById('affProgressBar').style.width=progress+'%';updateText('affNeedMore',needed<=0?'&#127881; Maximum tier achieved!':needed+' referrals to '+next.name);updateTierNodes(tiers,totalReferrals,current);loadAffHistory(affId);loadAffLeaderboard(affId);});}
+function updateTierNodes(tiers,totalRefs,current){tiers.forEach(tier=>{const isAchieved=totalRefs>=tier.min;const isCurrent=tier.name===current.name;const isNext=tier.min>totalRefs&&tier===tiers.find(t=>t.min>totalRefs);const node=document.getElementById('tierNode_'+tier.name.toLowerCase());if(node){node.classList.remove('bg-profit/20','border-profit','bg-accent-400/20','border-accent-400','opacity-40','scale-90');if(isCurrent||isAchieved){node.classList.add('bg-profit/20','border-profit','border-2');node.style.transform='scale(1.1)';}else if(isNext){node.classList.add('bg-accent-400/20','border-accent-400','border-2');}else{node.classList.add('opacity-40','scale-90');}}});const tierLine=document.getElementById('affTierLine');if(tierLine){const widths={STAR:5,BRONZE:25,SILVER:45,DIAMOND:72,CHAMPION:100};tierLine.style.width=widths[current.name]+'%';}document.querySelectorAll('.aff-tier-mobile').forEach(el=>{const tierName=el.dataset.tier?el.dataset.tier.toUpperCase():'';const tier=tiers.find(t=>t.name===tierName);if(tier){const isAchieved=totalRefs>=tier.min;const isCurrent=tier.name===current.name;el.classList.remove('border-accent-400/50','bg-accent-400/5','opacity-50');const statusEl=el.querySelector('span:last-child');if(isCurrent){el.classList.add('border-accent-400/50','bg-accent-400/5');if(statusEl){statusEl.textContent='CURRENT';statusEl.className='text-accent-400 text-xs font-bold';}}else if(isAchieved){if(statusEl){statusEl.textContent='&#9989;';statusEl.className='text-profit text-xs';}}else{el.classList.add('opacity-50');if(statusEl){statusEl.textContent='&#128274;';statusEl.className='text-neutral text-xs';}}}});}
+function loadAffHistory(affId){db.ref('affiliate_history/'+affId).limitToLast(10).once('value').then(snap=>{const data=snap.val();const container=document.getElementById('affHistoryList');if(data){const entries=Object.entries(data).reverse();let html='';entries.forEach(([k,v])=>{const statusIcon=v.status==='paid'?'&#9989;':v.status==='pending'?'&#9203;':'&#10060;';const statusColor=v.status==='paid'?'text-profit':v.status==='pending'?'text-yellow-500':'text-loss';const date=formatDate(v.timestamp||v.date);html+='<div class="glass rounded-xl p-3 flex items-center gap-3 text-sm"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-400/30 to-primary-500/30 flex items-center justify-center text-xs font-bold">'+(v.username||'U')[0].toUpperCase()+'</div><div class="flex-1 min-w-0"><p class="font-bold text-xs truncate">'+(v.username||'User')+'</p><p class="text-[10px] text-neutral">'+date+' &#183; '+(v.package||'pro').toUpperCase()+'</p></div><div class="text-right"><p class="text-xs font-bold text-accent-400">Rp '+(v.commission||0).toLocaleString()+'</p><p class="text-[10px] '+statusColor+'">'+statusIcon+' '+(v.status||'pending')+'</p></div></div>';});container.innerHTML=html;}else{container.innerHTML='<div class="glass rounded-xl p-4 text-center"><p class="text-3xl mb-2">&#128640;</p><p class="text-sm text-neutral">No referrals yet</p><p class="text-xs text-neutral mt-1">Share your link to start earning!</p></div>';}});}
+function loadAffLeaderboard(myAffId){db.ref('affiliates').orderByChild('total_commission').limitToLast(15).once('value').then(snap=>{const data=snap.val();const container=document.getElementById('affLeaderboardList');if(data){const entries=Object.entries(data).sort((a,b)=>(b[1].total_commission||0)-(a[1].total_commission||0)).slice(0,10);const medals={0:'&#129351;',1:'&#129352;',2:'&#129353;'};let html='';entries.forEach(([key,val],idx)=>{const isMe=key===myAffId;const bgClass=isMe?'bg-accent-400/10 border-accent-400/30':'';html+='<div class="glass rounded-xl p-3 flex items-center gap-3 text-sm '+bgClass+'"><span class="text-lg w-7 text-center font-bold">'+(medals[idx]||(idx+1))+'</span><div class="w-7 h-7 rounded-full bg-gradient-to-br from-accent-400/30 to-primary-500/30 flex items-center justify-center text-[10px] font-bold">'+(val.username||'A')[0].toUpperCase()+'</div><div class="flex-1 min-w-0"><p class="font-bold text-xs '+(isMe?'text-accent-400':'')+' truncate">'+(isMe?'&#128293; You':val.username||'Anonymous')+'</p><p class="text-[10px] text-neutral">'+(val.total_referrals||0)+' refs &#183; '+(val.rank||'STAR')+'</p></div><p class="text-xs font-bold text-accent-400">Rp '+(val.total_commission||0).toLocaleString()+'</p></div>';});container.innerHTML=html;}else{container.innerHTML='<p class="text-neutral text-sm text-center py-4">No affiliates yet. Be the first! &#128640;</p>';}});}
+function shareTo(platform){const link=document.getElementById('affLink').value;const msg=AFF_MESSAGES.short.replace('{link}',link);const msgEncoded=encodeURIComponent(msg);const urls={telegram:'https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(msg),whatsapp:'https://wa.me/?text='+msgEncoded,facebook:'https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(link)+'&quote='+msgEncoded};if(platform==='discord'){copyTextStr(msg);showToast('[OK] Pesan disalin! Paste di Discord','success');}else{window.open(urls[platform],'_blank');}trackClick();}
+function copyAffMessage(type){const link=document.getElementById('affLink').value;const msg=AFF_MESSAGES[type].replace('{link}',link);copyTextStr(msg);showToast('[OK] Template pesan disalin!','success');trackClick();}
+function trackClick(){db.ref('affiliates/'+affId+'/link_clicks').transaction(val=>(val||0)+1);}
+function formatDate(ts){return new Date(ts).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});}
+function updateText(id,text){const el=document.getElementById(id);if(el)el.textContent=text;}
+
+// PAYMENTS
+function selectPackage(pkg,el){State.payment.package=pkg;document.querySelectorAll('.pkg-card').forEach(e=>e.style.borderColor='rgba(255,255,255,0.05)');if(el)el.style.borderColor='#f59e0b';State.payment.months=1;document.getElementById('paymentDetails').classList.remove('hidden');document.getElementById('payTotal').textContent='Rp '+CONFIG.packages[pkg].pricePerMonth.toLocaleString()}
+function showManualPayment(){const amount=CONFIG.packages[State.payment.package].pricePerMonth*State.payment.months;document.getElementById('manualPayAmount').textContent='Rp '+amount.toLocaleString();document.getElementById('manualPayModal').classList.remove('hidden')}
+function confirmManualPayment(){if(!State.payment.package)return showToast('Pilih package!','error');const key='AT-'+Math.random().toString(36).substring(2,8).toUpperCase();const note=prompt('Catatan (username Telegram):','')||'';const fileInput=document.getElementById('proofFile');if(fileInput&&fileInput.files[0]){const file=fileInput.files[0];if(file.size>5*1024*1024){showToast('File terlalu besar! Max 5MB','error');return;}showToast('[i] Mengirim bukti ke Telegram...','info');const reader=new FileReader();reader.onload=function(e){const base64=e.target.result;sendPaymentToTelegram(key,note,base64,file.name);};reader.readAsDataURL(file);}else{sendPaymentToTelegram(key,note,null,null);}}
+function sendPaymentToTelegram(key,note,photoBase64,filename){const amount=CONFIG.packages[State.payment.package].pricePerMonth*State.payment.months;const isMax=State.payment.package==='max';const packageName=State.payment.package.toUpperCase();const username=State.user.username||'User';const caption='[BELL] *NEW PAYMENT - VERIFICATION NEEDED*\n\n[ID] *License:* `'+key+'`\n[USER] *User:* '+username+'\n[PACKAGE] *Package:* '+packageName+'\n[CLOCK] *Duration:* '+State.payment.months+' Bulan\n[MONEY] *Amount:* Rp '+amount.toLocaleString()+'\n[NOTE] *Note:* '+(note||'Tidak ada')+'\n[DATE] *Date:* '+new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})+'\n\n[WARN] _Verifikasi di panel admin_';const data={key:key,owner:username,package:State.payment.package,plan:State.payment.package,months:State.payment.months,amount:amount,is_active:false,autotrade_enabled:isMax,max_pairs:isMax?10:5,expires:new Date(Date.now()+State.payment.months*30*86400000).toISOString(),created:new Date().toISOString(),payment_method:'manual_transfer',payment_status:'pending_verification',note:note,proof_filename:filename||'',proof_telegram_sent:true};const telegramAPI='https://api.telegram.org/bot'+CONFIG.telegramBotToken;function simpanData(){db.ref('licenses/'+key).set(data).then(()=>{db.ref('payments/'+key).set({...data,timestamp:Date.now()});db.ref('admin_notifications/payments').push({key:key,owner:username,package:State.payment.package,amount:amount,status:'pending',timestamp:Date.now()});document.getElementById('manualPayModal').classList.add('hidden');document.getElementById('paymentDetails').classList.add('hidden');State.user.licenseKey=key;localStorage.setItem('at_license',key);}).catch(()=>showToast('[X] Gagal menyimpan data!','error'));}if(photoBase64&&filename){const arr=photoBase64.split(',');const mime=arr[0].match(/:(.*?);/)[1];const bstr=atob(arr[1]);let n=bstr.length;const u8arr=new Uint8Array(n);while(n--){u8arr[n]=bstr.charCodeAt(n);}const blob=new Blob([u8arr],{type:mime});const formData=new FormData();formData.append('chat_id',CONFIG.telegramChatId);formData.append('photo',blob,filename);formData.append('caption',caption);formData.append('parse_mode','Markdown');fetch(telegramAPI+'/sendPhoto',{method:'POST',body:formData}).then(r=>r.json()).then(res=>{if(res.ok){simpanData();showToast('[OK] Pembayaran dikirim! Bukti terkirim ke Telegram Admin.','success');}else{fetch(telegramAPI+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:CONFIG.telegramChatId,text:caption+'\n\n[WARN] _Gambar gagal terkirim._',parse_mode:'Markdown'})});simpanData();showToast('[!] Data tersimpan. Gambar gagal dikirim.','warning');}}).catch(()=>{fetch(telegramAPI+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:CONFIG.telegramChatId,text:caption+'\n\n[WARN] _Kirim via Telegram gagal._',parse_mode:'Markdown'})});simpanData();showToast('[!] Data tersimpan. Telegram error.','warning');});}else{fetch(telegramAPI+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:CONFIG.telegramChatId,text:caption+'\n\n[WARN] *TANPA BUKTI TRANSFER!*',parse_mode:'Markdown'})}).then(()=>{simpanData();showToast('[OK] Pembayaran dikirim (tanpa bukti).','success');}).catch(()=>{simpanData();showToast('[!] Data tersimpan. Notifikasi Telegram gagal.','warning');});}}
+
+// LICENSE
+function registerLicense(){const key=document.getElementById('regKey').value.trim().toUpperCase();if(!key)return showToast('Enter license key!','error');db.ref('licenses/'+key).once('value').then(snap=>{const d=snap.val();if(d&&d.is_active){State.user.licenseKey=key;State.user.package=d.package;State.user.expires=d.expires;localStorage.setItem('at_license',key);showToast('License registered!','success');navigate('market');loadMarketData()}else showToast('Invalid license!','error')}).catch(()=>showToast('Connection error','error'))}
+
+// ADMIN
+function adminTab(tab,el){document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active','bg-accent-400/20','text-accent-400'));if(el)el.classList.add('active','bg-accent-400/20','text-accent-400');document.getElementById('adminLicenses').classList.add('hidden');document.getElementById('adminPayments').classList.add('hidden');if(tab==='licenses')document.getElementById('adminLicenses').classList.remove('hidden');else{document.getElementById('adminPayments').classList.remove('hidden');loadAdminPayments();}}
+function checkAdminAccess(){if(State.user.licenseKey===CONFIG.adminLicense)document.getElementById('adminNavBtn').style.display='flex'}
+function loadAdminLicenses(){db.ref('licenses').once('value').then(snap=>{const l=snap.val();if(l)renderLicenseTable(l);else document.getElementById('adminLicenseList').innerHTML='<tr><td colspan="6" class="text-center py-8 text-neutral">No licenses</td></tr>'})}
+function renderLicenseTable(licenses){const t=document.getElementById('adminLicenseList');t.innerHTML=Object.entries(licenses).map(([k,l])=>{const a=l.is_active,e=l.expires?new Date(l.expires):null,d=e?Math.ceil((e-new Date())/86400000):0;return'<tr class="border-b border-white/5"><td class="py-3 font-mono text-xs">'+k.substring(0,12)+'...</td><td class="py-3">'+(l.owner||'-')+'</td><td class="py-3">'+((l.package||'pro').toUpperCase())+'</td><td class="py-3"><button onclick="toggleLicense(\''+k+'\','+(!a)+')" class="px-2 py-1 rounded-full text-xs '+(a?'bg-profit/20 text-profit':'bg-loss/20 text-loss')+'">'+(a?'ACTIVE':'INACTIVE')+'</button></td><td class="py-3 text-xs">'+(e?e.toLocaleDateString()+' ('+d+'d)':'N/A')+'</td><td class="py-3"><button onclick="editLicense(\''+k+'\')" class="text-accent-400 text-xs mr-2"><i class="fas fa-edit"></i></button><button onclick="deleteLicense(\''+k+'\')" class="text-loss text-xs"><i class="fas fa-trash"></i></button></td></tr>'}).join('')}
+let currentPaymentFilter='all';let currentPaymentKey='';let allPaymentsData={};
+function filterPayments(filter,el){currentPaymentFilter=filter;document.querySelectorAll('.pay-filter-btn').forEach(b=>{b.classList.remove('active','bg-accent-400/20','text-accent-400');});if(el)el.classList.add('active','bg-accent-400/20','text-accent-400');renderPaymentList(allPaymentsData,filter);}
+function loadAdminPayments(){db.ref('payments').on('value',snap=>{allPaymentsData=snap.val()||{};renderPaymentList(allPaymentsData,currentPaymentFilter);});}
+function renderPaymentList(data,filter){const c=document.getElementById('adminPaymentList');if(!data||Object.keys(data).length===0){c.innerHTML='<p class="text-neutral text-sm text-center py-4">No payments found</p>';return;}let entries=Object.entries(data);if(filter!=='all'){entries=entries.filter(([k,v])=>{const status=v.payment_status||v.status||'pending';return status===filter;});}entries.sort((a,b)=>(b[1].timestamp||b[1].created||0)-(a[1].timestamp||a[1].created||0));if(entries.length===0){c.innerHTML='<p class="text-neutral text-sm text-center py-4">No '+filter+' payments</p>';return;}let html='';entries.forEach(([k,v])=>{const status=v.payment_status||v.status||'pending';const statusIcon=status==='approved'?'&#9989;':status==='rejected'?'&#10060;':'&#9203;';const statusColor=status==='approved'?'text-profit':status==='rejected'?'text-loss':'text-yellow-500';const date=new Date(v.timestamp||v.created).toLocaleDateString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});const hasProof=v.proof_filename?'&#128206;':'';html+='<div class="glass rounded-xl p-4 text-sm mb-3 hover:bg-white/5 transition-all cursor-pointer" onclick="openPaymentDetail(\''+k+'\')"><div class="flex justify-between items-start mb-2"><div><span class="font-bold">'+(v.owner||'User')+'</span><span class="text-xs bg-accent-400/10 text-accent-400 px-2 py-0.5 rounded-full ml-2">'+((v.package||v.plan||'pro').toUpperCase())+'</span>'+hasProof+'</div><span class="'+statusColor+' text-xs">'+statusIcon+' '+status.toUpperCase()+'</span></div><div class="flex justify-between text-xs text-neutral"><span>Rp '+(v.amount||v.payment_amount||0).toLocaleString()+' &#183; '+(v.months||1)+' Bulan</span><span>'+date+'</span></div><div class="flex gap-2 mt-2" onclick="event.stopPropagation()">'+(status==='pending_verification'||status==='pending'?'<button onclick="approvePaymentDirect(\''+k+'\')" class="bg-profit/20 text-profit px-3 py-1 rounded-lg text-xs hover:bg-profit/30 transition-all">&#9989; Approve</button><button onclick="rejectPaymentDirect(\''+k+'\')" class="bg-loss/20 text-loss px-3 py-1 rounded-lg text-xs hover:bg-loss/30 transition-all">&#10060; Reject</button>':'')+'<button onclick="openPaymentDetail(\''+k+'\')" class="glass px-3 py-1 rounded-lg text-xs hover:bg-white/10 transition-all">&#128065; Detail</button></div></div>';});c.innerHTML=html;}
+function openPaymentDetail(key){currentPaymentKey=key;db.ref('payments/'+key).once('value').then(snap=>{const v=snap.val();if(!v)return;const status=v.payment_status||v.status||'pending';const date=new Date(v.timestamp||v.created).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});const expiresDate=v.expires?new Date(v.expires).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}):'N/A';let html='<div class="space-y-3"><div class="grid grid-cols-2 gap-2"><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">License Key</p><p class="font-mono font-bold text-sm">'+key+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Status</p><p class="'+(status==='approved'?'text-profit':status==='rejected'?'text-loss':'text-yellow-500')+' font-bold text-sm">'+status.toUpperCase()+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Owner</p><p class="font-bold text-sm">'+(v.owner||'User')+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Package</p><p class="font-bold text-accent-400 text-sm">'+((v.package||v.plan||'pro').toUpperCase())+' &#183; '+(v.months||1)+' Bulan</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Jumlah</p><p class="font-bold text-accent-400 text-lg">Rp '+(v.amount||v.payment_amount||0).toLocaleString()+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Tanggal</p><p class="text-sm">'+date+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Promo</p><p class="text-sm">'+(v.promo_code||'-')+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Expires</p><p class="text-sm">'+expiresDate+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Metode</p><p class="text-sm">'+(v.payment_method||'manual_transfer')+'</p></div><div class="glass rounded-xl p-3"><p class="text-[10px] text-neutral uppercase">Notifikasi</p><p class="text-sm text-profit">&#9989; Telegram</p></div><div class="glass rounded-xl p-3 col-span-2"><p class="text-[10px] text-neutral uppercase">Catatan</p><p class="text-sm">'+(v.note||'-')+'</p></div></div>';if(v.proof_telegram_sent&&v.proof_filename){html+='<div class="glass rounded-xl p-4 bg-profit/5 border border-profit/20"><p class="text-xs text-neutral mb-2">&#128248; Bukti Transfer</p><p class="text-sm font-bold">'+v.proof_filename+'</p><div class="flex items-center gap-2 mt-2"><span class="text-xl">&#128228;</span><div><p class="text-xs text-profit font-bold">&#9989; Telah dikirim ke Telegram Admin</p><p class="text-[10px] text-neutral">Cek Telegram @rimuru_genkai untuk melihat bukti transfer</p></div></div></div>';}else if(v.proof_filename){html+='<div class="glass rounded-xl p-4 bg-yellow-500/5 border border-yellow-500/20"><p class="text-xs text-neutral mb-2">&#128206; Bukti Transfer</p><p class="text-sm font-bold">'+v.proof_filename+'</p><p class="text-xs text-yellow-500 mt-1">&#9888;&#65039; File ada tapi belum terkirim ke Telegram. Cek manual.</p></div>';}else{html+='<div class="glass rounded-xl p-4 bg-loss/5 border border-loss/20"><p class="text-xs text-neutral mb-2">&#9888;&#65039; Tidak Ada Bukti Transfer</p><p class="text-xs text-neutral">User tidak mengupload bukti transfer. Verifikasi manual via Telegram @rimuru_genkai.</p></div>';}html+='</div>';document.getElementById('paymentDetailContent').innerHTML=html;const btnApprove=document.getElementById('btnApprovePayment');const btnReject=document.getElementById('btnRejectPayment');if(status==='pending_verification'||status==='pending'){btnApprove.style.display='block';btnReject.style.display='block';}else{btnApprove.style.display='none';btnReject.style.display='none';}document.getElementById('paymentDetailModal').classList.remove('hidden');});}
+function closePaymentDetail(){document.getElementById('paymentDetailModal').classList.add('hidden');currentPaymentKey='';}
+function approvePaymentFromModal(){if(!currentPaymentKey)return;approvePaymentDirect(currentPaymentKey);closePaymentDetail();}
+function rejectPaymentFromModal(){if(!currentPaymentKey)return;rejectPaymentDirect(currentPaymentKey);closePaymentDetail();}
+function approvePaymentDirect(key){if(!confirm('Approve payment: '+key+'?'))return;db.ref('payments/'+key).once('value').then(snap=>{const v=snap.val();if(!v)return;const months=v.months||1;const isMax=(v.package==='max'||v.plan==='max');const now=Date.now();const expiresDate=new Date(now+months*30*86400000).toISOString();db.ref('payments/'+key).update({payment_status:'approved',status:'approved',approved_at:now,approved_by:'admin'});db.ref('licenses/'+key).update({is_active:true,payment_status:'approved',autotrade_enabled:isMax,max_pairs:isMax?10:5,months:months,expires:expiresDate,package:v.package||v.plan||'pro',plan:v.package||v.plan||'pro',approved_at:now});db.ref('invoices/'+key).set({license_key:key,owner:v.owner||'User',package:v.package||v.plan||'pro',months:months,amount:v.amount||v.payment_amount||0,status:'paid',created:new Date().toISOString(),expires:expiresDate});const username=(v.owner||'User').replace(/[^a-zA-Z0-9]/g,'_');db.ref('user_notifications/'+username).push({type:'payment_approved',license_key:key,package:v.package||'pro',months:months,amount:v.amount||0,message:'[OK] Pembayaran DISETUJUI! License '+key+' sekarang AKTIF. Berlaku sampai '+new Date(expiresDate).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})+'.',invoice_key:key,timestamp:now,read:false});showToast('[OK] Payment approved! License active + invoice generated + notification sent.','success');});}
+function rejectPaymentDirect(key){const reason=prompt('Alasan reject (opsional):');if(reason===null)return;db.ref('payments/'+key).update({payment_status:'rejected',status:'rejected',rejected_at:Date.now(),reject_reason:reason||''});db.ref('licenses/'+key).update({is_active:false,payment_status:'rejected'});db.ref('payments/'+key).once('value').then(snap=>{const v=snap.val();const username=(v.owner||'User').replace(/[^a-zA-Z0-9]/g,'_');db.ref('user_notifications/'+username).push({type:'payment_rejected',license_key:key,message:'[X] Pembayaran DITOLAK. Alasan: '+(reason||'Tidak ada')+'. Hubungi admin.',timestamp:Date.now(),read:false});});showToast('[X] Payment rejected.','warning');}
+function showAddLicenseModal(){document.getElementById('licenseModalTitle').textContent='Add License';document.getElementById('editLicenseKey').value='';document.getElementById('licKey').value='';document.getElementById('licOwner').value='';document.getElementById('licAccount').value='';document.getElementById('licExpires').value='';document.getElementById('licenseModal').classList.remove('hidden')}
+function editLicense(k){db.ref('licenses/'+k).once('value').then(s=>{const l=s.val();if(l){document.getElementById('licenseModalTitle').textContent='Edit License';document.getElementById('editLicenseKey').value=k;document.getElementById('licKey').value=k;document.getElementById('licOwner').value=l.owner||'';document.getElementById('licPackage').value=l.package||'pro';document.getElementById('licAccount').value=l.account_login||'';document.getElementById('licExpires').value=l.expires?l.expires.substring(0,10):'';document.getElementById('licenseModal').classList.remove('hidden')}})}
+function saveLicense(){const ek=document.getElementById('editLicenseKey').value;const key=document.getElementById('licKey').value||'AT-'+Math.random().toString(36).substring(2,8).toUpperCase();const data={key:key,owner:document.getElementById('licOwner').value||'User',package:document.getElementById('licPackage').value,plan:document.getElementById('licPackage').value,is_active:true,autotrade_enabled:document.getElementById('licPackage').value==='max',max_pairs:document.getElementById('licPackage').value==='max'?10:5,expires:document.getElementById('licExpires').value?new Date(document.getElementById('licExpires').value).toISOString():new Date(Date.now()+30*86400000).toISOString(),created:new Date().toISOString(),account_login:document.getElementById('licAccount').value};db.ref('licenses/'+key).set(data).then(()=>{showToast(ek?'Updated!':'Created!','success');document.getElementById('licenseModal').classList.add('hidden');loadAdminLicenses()})}
+function toggleLicense(key,isActive){db.ref('licenses/'+key).update({is_active:isActive}).then(()=>{loadAdminLicenses();showToast('License '+(isActive?'activated':'deactivated')+'!','success')})}
+function deleteLicense(key){if(!confirm('Delete '+key+'?'))return;db.ref('licenses/'+key).remove().then(()=>{db.ref('signals/'+key).remove();loadAdminLicenses();showToast('Deleted!','success')})}
+
+// HELPERS
+function copyText(arg){let text='';if(typeof arg==='string'&&!document.getElementById(arg)){text=arg;}else{const el=document.getElementById(arg);if(!el)return;text=el.value||el.textContent||'';}copyTextStr(text);}
+function copyTextStr(text){if(navigator.clipboard){navigator.clipboard.writeText(text).then(()=>showToast('[OK] Disalin!','success'));}}
+
+// ==========================================
+// TRAILING MONITOR v4.0 — ULTIMATE PROFESSIONAL
+// ==========================================
+let trailCurrentPair='BTC/USD';let trailInterval=null;let trailLivePrices={BTCUSD:0,XAUUSD:0};
+let trailAutoScroll=true;let trailLastActiveCount=0;let trailSoundEnabled=true;
+
+function switchTrailPair(pair){
+    trailCurrentPair=pair;
+    document.querySelectorAll('.trail-tab-btn').forEach(b=>{b.classList.remove('border-accent-400','bg-accent-400/10','text-accent-400');b.classList.add('border-transparent','text-neutral');});
+    const activeTab=document.getElementById('trailTab'+pair.replace('/USD',''));
+    if(activeTab){activeTab.classList.add('border-accent-400','bg-accent-400/10','text-accent-400');activeTab.classList.remove('border-transparent','text-neutral');}
+    trailAutoScroll=true;loadTrailingStatus();
+}
+
+function updateLivePrices(){
+    db.ref('prices/BTCUSD').once('value').then(snap=>{const p=snap.val();if(p){trailLivePrices.BTCUSD=typeof p==='object'?p.bid:p;document.getElementById('tickerBTC').textContent='$'+trailLivePrices.BTCUSD.toFixed(2);document.getElementById('tickerBTC').className=trailLivePrices.BTCUSD>=0?'text-profit':'text-loss';}}).catch(()=>{});
+    db.ref('prices/XAUUSD').once('value').then(snap=>{const p=snap.val();if(p){trailLivePrices.XAUUSD=typeof p==='object'?p.bid:p;document.getElementById('tickerXAU').textContent='$'+trailLivePrices.XAUUSD.toFixed(2);document.getElementById('tickerXAU').className=trailLivePrices.XAUUSD>=0?'text-profit':'text-loss';}}).catch(()=>{});
+    if(State.currentPage==='positions')loadTrailingStatus();
+}
+
+function playTrailSound(){if(trailSoundEnabled){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;o.type='sine';g.gain.value=0.1;o.start();o.stop(ctx.currentTime+0.15);}catch(e){}}}
+
+function exportTrailCSV(){
+    const rows=[['Ticket','Direction','Entry','SL','TT','Price','Profit','Status','Distance to TT']];
+    document.querySelectorAll('#trailDetailList > div').forEach(div=>{
+        const ticket=div.querySelector('.ticket-id')?.textContent?.replace('#','')||'';
+        const dir=div.querySelector('.dir-icon')?.textContent?.includes('')?'BUY':'SELL';
+        const cells=div.querySelectorAll('.grid-cols-4 .font-bold');
+        const entry=cells[0]?.textContent?.replace('$','')||'';
+        const sl=cells[1]?.textContent?.replace('$','')||'';
+        const tt=cells[2]?.textContent?.replace('$','')||'';
+        const price=cells[3]?.textContent?.replace('$','')||'';
+        const profit=div.querySelector('.profit-text')?.textContent?.replace('$','')||'';
+        const status=div.querySelector('.status-badge')?.textContent?.trim()||'';
+        const need=div.querySelector('.need-text')?.textContent?.replace('Need: $','')||'0';
+        rows.push([ticket,dir,entry,sl,tt,price,profit,status,need]);
+    });
+    const csv=rows.map(r=>r.join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='trailing_'+trailCurrentPair.replace('/','_')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+    a.click();URL.revokeObjectURL(url);
+    showToast(' CSV exported!','success');
+}
+
+function loadTrailingStatus(){
+    const pairPath=trailCurrentPair.replace('/','_');
+    db.ref('trailing/'+CONFIG.adminLicense+'/'+pairPath).once('value').then(snap=>{
+        const data=snap.val();
+        if(!data||!data.positions||data.positions.length===0){showTrailEmpty();return;}
+        
+        const positions=data.positions;
+        const totalTrail=data.totalTrails||0;
+        const activeTrail=data.activeTrails||0;
+        const pendingTrail=totalTrail-activeTrail;
+        const totalProfitLocked=data.totalProfitLocked||0;
+        const totalProfit=data.totalProfit||0;
+        
+        // Sound alert kalau ada trailing baru aktif
+        if(activeTrail>trailLastActiveCount){playTrailSound();}
+        trailLastActiveCount=activeTrail;
+        
+        // Summary dengan format rapi
+        document.getElementById('trailTotal').textContent=totalTrail;
+        document.getElementById('trailActive').textContent=activeTrail;
+        document.getElementById('trailPending').textContent=pendingTrail;
+        document.getElementById('trailProfitLocked').textContent='$'+totalProfitLocked.toFixed(2);
+        
+        const overallPct=totalTrail>0?Math.round((activeTrail/totalTrail)*100):0;
+        document.getElementById('trailOverallPct').textContent=overallPct+'%';
+        document.getElementById('trailOverallBar').style.width=overallPct+'%';
+        
+        // Update header dengan session
+        const updateTime=data.updated?new Date(data.updated*1000).toLocaleTimeString():'--';
+        const hour=new Date().getHours();
+        const session=hour>=7&&hour<15?' ASIA':hour>=15&&hour<21?' LONDON':hour>=21||hour<7?' NEW YORK':' CLOSED';
+        document.getElementById('posLastUpdate').innerHTML='EA Live: '+updateTime+' <span class="text-xs text-neutral ml-2">'+session+'</span>';
+        
+        // Total floating P/L di header
+        const headerPL=document.getElementById('headerPL');
+        if(headerPL)headerPL.textContent=(totalProfit>=0?'+':'')+'$'+totalProfit.toFixed(2);
+        
+        const priceKey=trailCurrentPair==='BTC/USD'?'BTCUSD':'XAUUSD';
+        const livePrice=data.currentBid||trailLivePrices[priceKey]||0;
+        
+        // Sort: active first, then by profit desc
+        positions.sort((a,b)=>(b.active-a.active)||((b.profit||0)-(a.profit||0)));
+        
+        let html='';
+        positions.forEach((pos,index)=>{
+            const dir=pos.dir;
+            const entry=pos.entry;
+            const sl=pos.sl;
+            const profit=pos.profit||0;
+            const trailStart=pos.trailStart;
+            const trailStep=pos.trailStep;
+            const active=pos.active;
+            const ticket=pos.ticket;
+            const distanceToTrail=pos.distanceToTrail||0;
+            const currentPrice=pos.currentPrice||livePrice;
+            const entryTime=pos.entryTime?new Date(pos.entryTime*1000).toLocaleString():'';
+            
+            // Progress calculation
+            let progressPct=0;
+            let statusText,statusColor,borderColor,bgGlow,heatColor;
+            
+            if(active){
+                progressPct=100;
+                statusText=' ACTIVE';
+                statusColor='text-profit';
+                borderColor='border-l-2 border-profit';
+                bgGlow='bg-gradient-to-r from-profit/10 to-transparent';
+                heatColor='#10b981';
+            }else{
+                const distPct=trailStart>0?Math.abs(currentPrice-trailStart)/Math.abs(trailStart-entry)*100:100;
+                if(distPct<10){progressPct=90;statusText=' CLOSE';statusColor='text-orange-400';borderColor='border-l-2 border-orange-500';bgGlow='bg-gradient-to-r from-orange-500/10 to-transparent';heatColor='#f97316';}
+                else if(distPct<25){progressPct=70;statusText=' NEAR';statusColor='text-yellow-400';borderColor='border-l-2 border-yellow-500';bgGlow='bg-gradient-to-r from-yellow-500/10 to-transparent';heatColor='#eab308';}
+                else if(distPct<50){progressPct=40;statusText=' MID';statusColor='text-blue-400';borderColor='border-l-2 border-blue-500';bgGlow='';heatColor='#3b82f6';}
+                else{progressPct=10;statusText=' FAR';statusColor='text-neutral';borderColor='border-l-2 border-white/10';bgGlow='';heatColor='#6b7280';}
+            }
+            
+            const barGradient=progressPct>=100?'bg-gradient-to-r from-emerald-400 to-profit animate-trail-pulse':
+                progressPct>=70?'bg-gradient-to-r from-yellow-400 to-emerald-400':
+                progressPct>=30?'bg-gradient-to-r from-orange-400 to-yellow-400':
+                'bg-gradient-to-r from-neutral to-blue-400';
+            
+            // Sparkline mini (entry  TT  current)
+            const sparklineWidth=100;
+            const entryPos=0;
+            const ttPos=50;
+            const currentPos=progressPct>=100?100:Math.min(95,progressPct);
+            const slPos=active?Math.min(90,(sl-entry)/(trailStart-entry)*50+50):50;
+            
+            // Row color
+            const rowBg=index%2===0?'':'bg-white/[0.02]';
+            
+            // Countdown
+            const now2=new Date();
+            const mins2=now2.getMinutes(),secs2=now2.getSeconds();
+            const currentCandle=Math.floor(mins2/15)*15;
+            const nextCandle=(currentCandle+15)%60;
+            let minsToClose=nextCandle-mins2;
+            if(minsToClose<=0)minsToClose+=15;
+            const totalSecs=minsToClose*60-secs2;
+            const countdownMin=Math.floor(totalSecs/60);
+            const countdownSec=totalSecs%60;
+            
+            html+='<div class="glass rounded-xl p-3 '+borderColor+' '+bgGlow+' '+rowBg+' transition-all card-hover relative overflow-hidden">'+
+                // Heat dot
+                '<div class="absolute top-2 right-2 w-2 h-2 rounded-full" style="background:'+heatColor+'"></div>'+
+                // Row 1: Ticket + Status
+                '<div class="flex items-center justify-between mb-2">'+
+                    '<div class="flex items-center gap-2">'+
+                        '<span class="text-lg dir-icon">'+(dir==='BUY'?'':'')+'</span>'+
+                        '<span class="font-bold text-xs ticket-id">#'+ticket+'</span>'+
+                        '<span class="text-[10px] text-neutral hidden sm:inline">'+entryTime+'</span>'+
+                        '<span class="text-xs px-2 py-0.5 rounded-full '+statusColor+' bg-white/5 status-badge">'+statusText+'</span>'+
+                    '</div>'+
+                    '<div class="flex items-center gap-3">'+
+                        '<span class="text-xs font-bold profit-text '+(profit>=0?'text-profit':'text-loss')+'">'+(profit>=0?'+':'')+'$'+profit.toFixed(2)+'</span>'+
+                        '<span class="text-[10px] font-bold '+statusColor+' w-8 text-right">'+progressPct.toFixed(0)+'%</span>'+
+                    '</div>'+
+                '</div>'+
+                // Row 2: Mini Sparkline
+                '<div class="relative h-4 mb-2 mx-1">'+
+                    '<div class="absolute inset-0 flex items-center">'+
+                        '<div class="w-full h-0.5 bg-white/10 rounded-full relative">'+
+                            '<div class="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white" style="left:'+entryPos+'%"></div>'+
+                            '<div class="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-yellow-400" style="left:'+ttPos+'%"></div>'+
+                            (active?'<div class="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-profit animate-pulse" style="left:'+slPos+'%"></div>':'')+
+                            '<div class="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 border-white shadow-lg shadow-white/50" style="left:'+currentPos+'%"></div>'+
+                        '</div>'+
+                    '</div>'+
+                '</div>'+
+                // Row 3: Data Grid
+                '<div class="grid grid-cols-4 gap-2 text-xs mb-2">'+
+                    '<div><span class="text-neutral">Entry</span><p class="text-white font-bold">$'+entry.toFixed(2)+'</p></div>'+
+                    '<div><span class="text-neutral">SL '+(active?'':'')+'</span><p class="'+(active?'text-profit':'text-loss')+' font-bold">$'+sl.toFixed(2)+'</p></div>'+
+                    '<div><span class="text-neutral">TT</span><p class="text-yellow-400 font-bold">$'+trailStart.toFixed(2)+'</p></div>'+
+                    '<div><span class="text-neutral">Now</span><p class="text-white font-bold">$'+currentPrice.toFixed(2)+'</p></div>'+
+                '</div>'+
+                // Row 4: Progress Bar
+                '<div class="w-full h-2 bg-white/5 rounded-full overflow-hidden mb-1">'+
+                    '<div class="h-full rounded-full transition-all duration-700 '+barGradient+'" style="width:'+progressPct+'%"></div>'+
+                '</div>'+
+                // Row 5: Footer
+                '<div class="flex justify-between text-[10px]">'+
+                    '<span class="text-neutral">$'+entry.toFixed(2)+'</span>'+
+                    '<span class="text-neutral">$'+trailStart.toFixed(2)+'</span>'+
+                '</div>'+
+                // Row 6: Action info
+                (active?
+                    '<div class="mt-2 pt-2 border-t border-profit/20 flex items-center justify-between">'+
+                        '<span class="text-xs text-profit flex items-center gap-1"><i class="fas fa-shield-check"></i> Secured: $'+(Math.abs(sl-entry)).toFixed(2)+'</span>'+
+                        '<span class="text-[10px] text-profit">Step: $'+trailStep.toFixed(2)+'</span>'+
+                    '</div>':
+                    '<div class="mt-2 pt-2 border-t border-white/5 flex items-center justify-between">'+
+                        '<span class="text-xs text-neutral flex items-center gap-1"><i class="fas fa-clock text-yellow-400"></i> Check: ~'+countdownMin+'m '+countdownSec+'s</span>'+
+                        '<span class="text-xs text-yellow-400 need-text">Need: $'+Math.abs(distanceToTrail).toFixed(2)+'</span>'+
+                    '</div>')+
+            '</div>';
+        });
+        
+        document.getElementById('trailDetailList').innerHTML=html||'<p class="text-neutral text-center py-4">No active positions</p>';
+        
+        // Auto-scroll ke trailing yang baru aktif
+        if(trailAutoScroll&&activeTrail>0){
+            setTimeout(()=>{
+                const activeEl=document.querySelector('#trailDetailList .border-l-2.border-profit');
+                if(activeEl)activeEl.scrollIntoView({behavior:'smooth',block:'center'});
+            },300);
+            trailAutoScroll=false;
+        }
+        
+        updateNextCheckCountdown();
+    }).catch(err=>{console.error('Trailing error:',err);showTrailEmpty();});
+}
+
+function showTrailEmpty(){
+    document.getElementById('trailTotal').textContent='--';
+    document.getElementById('trailActive').textContent='--';
+    document.getElementById('trailPending').textContent='--';
+    document.getElementById('trailProfitLocked').textContent='--';
+    document.getElementById('trailOverallPct').textContent='0%';
+    document.getElementById('trailOverallBar').style.width='0%';
+    document.getElementById('trailDetailList').innerHTML='<div class="text-center py-12"><div class="inline-block glass rounded-2xl p-6"><p class="text-4xl mb-3"></p><p class="text-neutral font-medium">Waiting for EA data...</p><p class="text-xs text-neutral mt-2">EA uploads trailing status every 15 seconds</p><div class="mt-3 flex items-center justify-center gap-1"><span class="w-2 h-2 rounded-full bg-neutral animate-pulse"></span><span class="w-2 h-2 rounded-full bg-neutral animate-pulse" style="animation-delay:0.2s"></span><span class="w-2 h-2 rounded-full bg-neutral animate-pulse" style="animation-delay:0.4s"></span></div></div></div>';
+    document.getElementById('posLastUpdate').textContent='Waiting for EA...';
+}
+
+function updateNextCheckCountdown(){
+    const now3=new Date();
+    const mins3=now3.getMinutes(),secs3=now3.getSeconds();
+    const currentCandle2=Math.floor(mins3/15)*15;
+    const nextCandle2=(currentCandle2+15)%60;
+    let minsToClose2=nextCandle2-mins3;
+    if(minsToClose2<=0)minsToClose2+=15;
+    const totalSecs2=minsToClose2*60-secs3;
+    const countdownMin2=Math.floor(totalSecs2/60);
+    const countdownSec2=totalSecs2%60;
+    const el=document.getElementById('trailNextCheck');
+    if(el)el.textContent='Next check: '+countdownMin2+'m '+countdownSec2+'s';
+}
+
+function copyTrailStatus(){
+    const total=document.getElementById('trailTotal').textContent;
+    const active=document.getElementById('trailActive').textContent;
+    const pending=document.getElementById('trailPending').textContent;
+    const profit=document.getElementById('trailProfitLocked').textContent;
+    const overall=document.getElementById('trailOverallPct').textContent;
+    const text=' Trailing Status — '+trailCurrentPair+'\n'+'\n'+'Total: '+total+' | Active: '+active+' | Pending: '+pending+'\n'+'Overall: '+overall+' | Profit Locked: '+profit+'\n'+'\n'+new Date().toLocaleString();
+    navigator.clipboard.writeText(text).then(()=>showToast(' Copied!','success'));
+}
+
+function startTrailAutoRefresh(){
+    if(trailInterval)clearInterval(trailInterval);
+    trailInterval=setInterval(function(){if(State.currentPage==='positions'){loadTrailingStatus();}},5000);
+    loadTrailingStatus();
+}
+
+setInterval(updateNextCheckCountdown,1000);
+setInterval(updateLivePrices,5000);
+updateLivePrices();
+
+// ==========================================
+// NOTIFICATION SYSTEM
+// ==========================================
+let notifUnread=0;
+function initNotifications(){const username=State.user.username||'User';const notifPath='user_notifications/'+username.replace(/[^a-zA-Z0-9]/g,'_');db.ref(notifPath).orderByChild('timestamp').limitToLast(20).on('value',snap=>{const data=snap.val();const container=document.getElementById('notifList');const badge=document.getElementById('notifBadge');if(data){const entries=Object.entries(data).reverse();notifUnread=entries.filter(([k,v])=>!v.read).length;if(notifUnread>0){badge.classList.remove('hidden');badge.textContent=notifUnread>99?'99+':notifUnread;}else{badge.classList.add('hidden');}let html='';entries.slice(0,10).forEach(([k,v])=>{const icon=v.type==='payment_approved'?'&#9989;':v.type==='payment_rejected'?'&#10060;':'&#8505;&#65039;';const bgClass=v.read?'':'bg-accent-400/5 border-l-2 border-accent-400';const timeAgo=getTimeAgo(v.timestamp);html+='<div class="glass rounded-xl p-3 text-xs cursor-pointer '+bgClass+' hover:bg-white/5 transition-all" onclick="markNotifRead(\''+k+'\')"><div class="flex items-start gap-2"><span class="text-lg">'+icon+'</span><div><p class="text-white">'+(v.message||'')+'</p><p class="text-neutral mt-1">'+timeAgo+'</p></div>'+(!v.read?'<span class="w-2 h-2 rounded-full bg-accent-400 flex-shrink-0 mt-1"></span>':'')+'</div></div>';});container.innerHTML=html||'<p class="text-neutral text-xs text-center py-4">No notifications</p>';}});}
+function toggleNotifications(){document.getElementById('notifDropdown').classList.toggle('hidden');}
+function markNotifRead(key){const username=State.user.username||'User';const notifPath='user_notifications/'+username.replace(/[^a-zA-Z0-9]/g,'_');db.ref(notifPath+'/'+key+'/read').set(true);}
+function markAllNotifRead(){const username=State.user.username||'User';const notifPath='user_notifications/'+username.replace(/[^a-zA-Z0-9]/g,'_');db.ref(notifPath).once('value').then(snap=>{const data=snap.val();if(data){for(const key of Object.keys(data)){db.ref(notifPath+'/'+key+'/read').set(true);}}showToast('[OK] Semua notifikasi ditandai sudah dibaca','success');});}
+function getTimeAgo(ts){if(!ts)return'';const diff=Date.now()-ts;const mins=Math.floor(diff/60000);if(mins<1)return'Baru saja';if(mins<60)return mins+'m ago';const hours=Math.floor(mins/60);if(hours<24)return hours+'h ago';const days=Math.floor(hours/24);return days+'d ago';}
+document.addEventListener('click',function(e){const dropdown=document.getElementById('notifDropdown');if(!dropdown)return;if(!dropdown.classList.contains('hidden')){const isClickInside=dropdown.contains(e.target);const bellButton=e.target.closest('button');const isBell=bellButton&&bellButton.getAttribute('onclick')&&bellButton.getAttribute('onclick').indexOf('toggleNotifications')>=0;if(!isClickInside&&!isBell){dropdown.classList.add('hidden');}}});
+
+// ==========================================
+// LICENSE PAGE
+// ==========================================
+function loadLicensePage(){const key=State.user.licenseKey;if(!key)return;db.ref('licenses/'+key).on('value',snap=>{const d=snap.val();if(d){const el=document.getElementById('licenseDetails');const status=d.is_active?'&#9989; Active':'&#10060; Inactive';const statusColor=d.is_active?'text-profit':'text-loss';const exp=new Date(d.expires).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});el.innerHTML='<div class="space-y-2"><div class="flex justify-between"><span>License</span><span class="font-mono">'+key+'</span></div><div class="flex justify-between"><span>Package</span><span class="text-accent-400 font-bold">'+((d.package||'pro').toUpperCase())+'</span></div><div class="flex justify-between"><span>Status</span><span class="'+statusColor+' font-bold">'+status+'</span></div><div class="flex justify-between"><span>Expires</span><span>'+exp+'</span></div><div class="flex justify-between"><span>AutoTrade</span><span>'+(d.autotrade_enabled?'&#9989; Enabled':'&#10060; Disabled')+'</span></div></div>';}});db.ref('invoices/'+key).on('value',snap=>{const d=snap.val();const el=document.getElementById('invoiceList');if(d){el.innerHTML='<div class="glass rounded-xl p-4"><p class="font-bold">Invoice #'+key+'</p><div class="text-xs text-neutral space-y-1 mt-2"><p>Package: '+d.package.toUpperCase()+'</p><p>Durasi: '+d.months+' Bulan</p><p>Jumlah: <span class="text-accent-400 font-bold">Rp '+(d.amount||0).toLocaleString()+'</span></p><p>Status: <span class="text-profit font-bold">'+(d.status||'paid')+'</span></p><p>Expires: '+new Date(d.expires).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})+'</p></div></div>';}});}
+
+//  INIT
+function initColosseum(){
+    updateWarZone();
+    updateStreakZone();
+    updateApexRankings();
+    updateGhostTrader();
+    checkCrashAlert();
+    setInterval(updateWarTimer,1000);
+    setInterval(updateLootBox,1000);
+    setInterval(updatePriceRace,2000);
+}
+
+//  DEMO MODE — 1 klik isi semua data
+function demoMode(){
+    db.ref('live_votes/current').set({buy:47,sell:23,buyPercent:67,sellPercent:33});
+    db.ref('live_votes/rankings').set({trader_pro:{username:'@trader_pro',xp:450},gold_hunter:{username:'@gold_hunter',xp:320},forex_king:{username:'@forex_king',xp:280}});
+    let p=[];for(let i=0;i<7;i++){p.push({dir:i<5?'BUY':'SELL',profit:(Math.random()*50+10).toFixed(2),entry:2650,sl:i<5?2660:2640,trailStart:i<5?2670:2630,trailStep:5,active:i<5,ticket:10000+i,currentPrice:2675});}
+    db.ref('trailing/AT-AB100702CB5771F2/XAU_USD').set({positions:p,totalTrails:7,activeTrails:5,totalProfitLocked:340.50,totalProfit:p.reduce((s,x)=>s+parseFloat(x.profit),0),updated:Math.floor(Date.now()/1000)});
+    showToast('[DEMO] Data loaded!','success');
+}
+
+// INIT
+document.addEventListener('DOMContentLoaded',function(){navigate('market');loadMarketData();setTimeout(initChart,800);setTimeout(checkAdminAccess,2000);setTimeout(initNotifications,3000);setTimeout(initColosseum,4000);});
+</script>
+</body>
+</html>   
